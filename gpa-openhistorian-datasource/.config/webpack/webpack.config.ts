@@ -30,7 +30,9 @@ const config = async (env): Promise<Configuration> => ({
 
   devtool: env.production ? 'source-map' : 'eval-source-map',
 
-  entry: await getEntries(),
+  entry: {
+    module: "./module.ts"
+  },
 
   externals: [
     'lodash',
@@ -131,7 +133,7 @@ const config = async (env): Promise<Configuration> => ({
     },
     filename: '[name].js',
     library: {
-      type: 'amd',
+      type: 'commonjs',
     },
     path: path.resolve(process.cwd(), DIST_DIR),
     publicPath: '/',
