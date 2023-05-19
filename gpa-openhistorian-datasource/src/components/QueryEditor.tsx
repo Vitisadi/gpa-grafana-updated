@@ -39,6 +39,12 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
   const renderAsyncMultiSelect = () => {
     // API Data here
 
+    // const result = await getBackendSrv().datasourceRequest({
+    //   method: "GET",
+    //   url: "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=IBM&interval=15min&apikey=MBMP5F530P7DL6ZG",
+    //   params: query,
+    // })
+
     const asyncOptions = [
       { label: 'Option 1', value: 'option1' },
       { label: 'Option 2', value: 'option2' },

@@ -1,0 +1,4 @@
+\\demoapp\c$\Program Files\openHistorian\Grafana\data\plugins
+
+Monitoring -> remote service console
+init 3
