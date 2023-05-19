@@ -29,7 +29,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         refId: target.refId,
         fields: [
           { name: 'Time', values: [from, to], type: FieldType.time },
-          { name: 'Value', values: [target.constant, target.constant], type: FieldType.number },
+          //{ name: 'Value', values: [target.constant, target.constant], type: FieldType.number },
         ],
       });
     });

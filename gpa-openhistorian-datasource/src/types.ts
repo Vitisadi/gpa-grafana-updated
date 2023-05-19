@@ -1,19 +1,12 @@
 import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
-  queryText?: string;
-  constant: number;
-
-  // queryTypes: Array<string>;
-  // queryType: string;
+  elements: string[];
+  queryType: string;
 }
 
 export const DEFAULT_QUERY: Partial<MyQuery> = {
-  constant: 6.5,
-  // queryTypes: [
-  //     "Element List", "Filter Expression", "Text Editor"
-  // ],
-  // queryType: ("Element List"),
+  queryType: "element"
 };
 
 /**
