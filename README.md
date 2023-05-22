@@ -1,5 +1,7 @@
 # gpa-grafana-updated
 
+Switch Directory - `cd .\gpa-openhistorian-datasource\`
+
 Run  - `docker compose up -d`
  
 Install compiler - `yarn install`
