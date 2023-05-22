@@ -8,7 +8,7 @@ import {
 } from '@grafana/data';
 
 import { MyQuery, MyDataSourceOptions } from './types';
-//import { getBackendSrv } from '@grafana/runtime';
+import { getBackendSrv } from '@grafana/runtime';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   path: string;
@@ -38,45 +38,25 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    // Implement a health check for your data source.
-    // return {
-    //   status: 'success',
-    //   message: 'Success',
-    // };
-
-
-    // return this.backendSrv.datasourceRequest({
-    //   url: this.url + '/',
-    //   method: 'GET'
-    // }).then(function (response) {
-    //     if (response.status === 200) {
-    //     return { status: "success", message: "Data source is working", title: "Success" };
-    //     }
-    // });
-
-    // const result = await getBackendSrv().datasourceRequest({
-    //   method: "GET",
-    //   url: "https://openhistorian.demo.gridprotectionalliance.org/" + this.path + '/GetMetadata',
-    // })
-
-    // await getBackendSrv().datasourceRequest({
-    //   url: "https://openhistorian.demo.gridprotectionalliance.org/" + this.path + '/',
-    //   method: 'GET'
-    // }).then(function (response) {
-    //     if (response.status === 200) {
-    //       return { status: "success", message: "Data source is working", title: "Success" };
-    //     }
-    //     else {
-    //       return { status: "error", message: "Data source is not working", title: "Error" };
-    //     }
-    // });
+    await getBackendSrv().datasourceRequest({
+      url: "https://openhistorian.demo.gridprotectionalliance.org/api/grafana/",
+      method: 'GET'
+    }).then(function (response) {
+        console.log("status")
+        console.log(response)
+        if (response["status"] === 200) {
+          return { status: "success", message: "Data source is working", title: "Success!" };
+        }
+        else {
+          return { status: "error", message: "Data source is not working", title: "Error" };
+        }
+     });
   
-    //return result;
 
-    return {
-        status: 'success',
-        message: 'Success',
-      };
+    // return {
+    //     status: 'success',
+    //     message: 'Success',
+    //   };
 
 
   }
