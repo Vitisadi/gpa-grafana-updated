@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { InlineField, Select, AsyncMultiSelect } from '@grafana/ui';
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
+import { getBackendSrv } from '@grafana/runtime';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery } from '../types';
 
@@ -37,36 +38,38 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
   };
   
   const renderAsyncMultiSelect = () => {
-    // API Data here
+    // const asyncOptions = [
+    //   { label: 'Option 1', value: 'option1' },
+    //   { label: 'Option 2', value: 'option2' },
+    //   { label: 'Option 3', value: 'option3' },
+    // ];
 
-    // const result = await getBackendSrv().datasourceRequest({
-    //   method: "GET",
-    //   url: "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=IBM&interval=15min&apikey=MBMP5F530P7DL6ZG",
-    //   params: query,
-    // })
-
-    const asyncOptions = [
-      { label: 'Option 1', value: 'option1' },
-      { label: 'Option 2', value: 'option2' },
-      { label: 'Option 3', value: 'option3' },
-    ];
-
-    const loadAsyncOptions = () => {
-      return new Promise<Array<SelectableValue<string>>>((resolve) => {
-        setTimeout(() => {
-          resolve(asyncOptions);
-        }, 2000);
+    const loadAsyncOptions = async () => {
+      const response = await getBackendSrv().datasourceRequest({
+        url: "https://openhistorian.demo.gridprotectionalliance.org/api/grafana/search",
+        method: 'POST',
+        data: { target: "" }
       });
+        
+      const asyncOptions = response.data.map((element: string) => ({
+        label: element,
+        value: element,
+      }));
+    
+      return asyncOptions;
     };
+    
 
     return (
       <InlineField label="Elements" labelWidth={10}>
+        {/* <div style={{ width: 'auto' }}> */}
         <AsyncMultiSelect
           loadOptions={loadAsyncOptions}
           defaultOptions
           value={elementsValue}
           onChange={onElementsChange}
         />
+        {/* </div> */}
       </InlineField>
     );
   }
