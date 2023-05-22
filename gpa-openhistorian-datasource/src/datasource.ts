@@ -38,26 +38,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    await getBackendSrv().datasourceRequest({
-      url: "https://openhistorian.demo.gridprotectionalliance.org/api/grafana/",
-      method: 'GET'
-    }).then(function (response) {
-        console.log("status")
-        console.log(response)
-        if (response["status"] === 200) {
-          return { status: "success", message: "Data source is working", title: "Success!" };
+    return await getBackendSrv().datasourceRequest({
+        url: this.path + '/',
+        method: 'GET'
+      }).then(function (response) {
+        if (response.status === 200) {
+          return { status: "success", message: "Data source is working", title: "Success" };
         }
         else {
           return { status: "error", message: "Data source is not working", title: "Error" };
         }
-     });
-  
-
-    // return {
-    //     status: 'success',
-    //     message: 'Success',
-    //   };
-
-
+      }
+    );
   }
 }
