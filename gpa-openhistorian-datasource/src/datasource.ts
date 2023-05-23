@@ -12,11 +12,11 @@ import { getBackendSrv } from '@grafana/runtime';
 import _ from 'lodash';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
-  path: string;
+  url: string;
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
-    this.path = instanceSettings.jsonData.path || "";
+    this.url = instanceSettings.jsonData.url || "";
   }
 
   fixTemplates(target: MyQuery) {
@@ -70,12 +70,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         });
 
         const pointsData = await getBackendSrv().datasourceRequest({
-          url: this.path + '/query',
+          url: this.url + '/query',
           data: query,
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         })
         
+        //Declare frames
         const frame = new MutableDataFrame({
           refId: target.refId,
           fields: [
@@ -132,7 +133,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
   async testDatasource() {
     return await getBackendSrv().datasourceRequest({
-        url: this.path + '/',
+        url: this.url + '/',
         method: 'GET'
       }).then(function (response) {
         if (response.status === 200) {
@@ -145,6 +146,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     );
   }
 }
+
+//Groups data by time
 function groupPoints(pointsData: { [key: string]: any }) {
   const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = {};
 

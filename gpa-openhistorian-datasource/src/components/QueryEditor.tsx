@@ -49,6 +49,9 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
         label: element,
         value: element,
       }));
+
+      //Sort alphabetically
+      asyncOptions.sort((a: { label: string; value: string; }, b: { label: string; value: string; }) => a.label.localeCompare(b.label)); 
     
       return asyncOptions;
     };
