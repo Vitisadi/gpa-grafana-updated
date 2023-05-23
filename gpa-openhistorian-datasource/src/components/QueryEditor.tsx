@@ -9,12 +9,12 @@ import { MyDataSourceOptions, MyQuery } from '../types';
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 export function QueryEditor({ query, onChange, onRunQuery }: Props) {
-  //const { queryText, constant } = query;
+  //const { queryText, elements } = query;
 
   const selectOptions = [
-    { label: 'Element List', value: "element" },
-    { label: 'Filter Expression', value: "filter" },
-    { label: 'Text Editor', value: "text" },
+    { label: 'Element List', value: "Element List" },
+    { label: 'Filter Expression', value: "Filter" },
+    { label: 'Text Editor', value: "Text" },
   ];
 
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(selectOptions[0]);
@@ -38,12 +38,6 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
   };
   
   const renderAsyncMultiSelect = () => {
-    // const asyncOptions = [
-    //   { label: 'Option 1', value: 'option1' },
-    //   { label: 'Option 2', value: 'option2' },
-    //   { label: 'Option 3', value: 'option3' },
-    // ];
-
     const loadAsyncOptions = async () => {
       const response = await getBackendSrv().datasourceRequest({
         url: "https://openhistorian.demo.gridprotectionalliance.org/api/grafana/search",
@@ -85,7 +79,7 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
           allowCustomValue
         />
       </InlineField>
-      {typeValue?.value === 'element' && renderAsyncMultiSelect()}
+      {typeValue?.value === 'Element List' && renderAsyncMultiSelect()}
     </div>
   );
 }
