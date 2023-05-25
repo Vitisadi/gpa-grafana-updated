@@ -5,11 +5,23 @@ import {
   DataSourceInstanceSettings,
   MutableDataFrame,
   FieldType,
+  QueryResultMeta,
 } from '@grafana/data';
 
 import { MyQuery, MyDataSourceOptions } from './types';
 import { getBackendSrv } from '@grafana/runtime';
 import _ from 'lodash';
+
+interface CustomQueryResultMeta extends QueryResultMeta {
+  fields: {
+    [fieldName: string]: {
+      latitude?: number;
+      longitude?: number;
+      // Add any other metadata properties as needed
+    };
+  };
+}
+
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url: string;
@@ -103,22 +115,45 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         const frame = new MutableDataFrame({
           refId: target.refId,
           fields: [
-            { name: 'time', type: FieldType.time },
-          ] 
+            { name: 'Time', type: FieldType.time },
+          ],
+          meta: {
+            fields: {
+              time: {}, 
+            },
+          } as CustomQueryResultMeta, // Use the custom interface
         });
 
+        const metadata = frame.meta as CustomQueryResultMeta;
+        const fieldMetadata = metadata.fields;
 
-        //Add fields
+        //Initialize the field metadata        
+        // fieldMetadata.time.latitude = 35.043621;
+        // fieldMetadata.time.longitude = -85.308990;
+
+        // console.log(fieldMetadata.time.latitude);
+        // console.log(fieldMetadata.time.longitude);
+
+
+        
+        //Add fields & meta data
         for (const entry of pointsData["data"]) {
           frame.addField({ name: entry["target"], type: FieldType.number })
+          fieldMetadata[entry["target"]] = {
+            latitude: 35.043621,
+            longitude: -85.308990
+          }
         }
+
+        
+        console.log(fieldMetadata)
 
         //Intermediate object to group points by timestamp
         const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = groupPoints(pointsData);
 
         // Iterate through grouped points and add them to the frame
         for (const timestamp in groupedPoints) {
-          const data: { [key: string]: any } = { time: parseInt(timestamp, 10) };
+          const data: { [key: string]: any } = { Time: parseInt(timestamp, 10) };
           Object.assign(data, groupedPoints[timestamp]);
           frame.add(data);
         }
