@@ -2,13 +2,12 @@
 import React, { useState } from 'react';
 import { InlineField, Select, AsyncMultiSelect } from '@grafana/ui';
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
-import { getBackendSrv } from '@grafana/runtime';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery } from '../types';
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
-export function QueryEditor({ query, onChange, onRunQuery }: Props) {
+export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
   //const { queryText, elements } = query;
 
   const selectOptions = [
@@ -22,16 +21,14 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
 
   const onSearchChange = (selected: SelectableValue<string>) => {
     setTypeValue(selected);
-    //console.log(selected)
     if (selected) {
-      onChange({ ...query, queryType: selected.value! }); // Convert the value to a string
+      onChange({ ...query, queryType: selected.value! }); 
     }
   };
 
   const onElementsChange = (selected: Array<SelectableValue<string>>) => {
     setElementsValue(selected);
     const selectedValues = selected.map((item) => item.value) as string[];
-    //console.log(selectedValues);
     onChange({ ...query, elements: selectedValues });
     // Trigger the query execution
     onRunQuery();
@@ -39,12 +36,8 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
   
   const renderAsyncMultiSelect = () => {
     const loadAsyncOptions = async () => {
-      const response = await getBackendSrv().datasourceRequest({
-        url: "https://openhistorian.demo.gridprotectionalliance.org/api/grafana/search",
-        method: 'POST',
-        data: { target: "" }
-      });
-        
+      const response = await datasource.searchQuery()
+
       const asyncOptions = response.data.map((element: string) => ({
         label: element,
         value: element,

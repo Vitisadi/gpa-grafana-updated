@@ -19,6 +19,25 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     this.url = instanceSettings.jsonData.url || "";
   }
 
+  //List of all elements
+  async searchQuery(){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + "/search",
+      method: 'POST',
+      data: { target: "" }
+    });
+  }
+
+  //Information on specific elements
+  async dataQuery(query: DataQueryRequest<MyQuery>){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + '/query',
+      data: query,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+  
   fixTemplates(target: MyQuery) {
     if (target === undefined){
       return '';
@@ -60,6 +79,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     // Return a constant for each query.
     const dataPromises = options.targets.map(async (target) => { 
+      if(!target.elements){
+        return new MutableDataFrame({
+          refId: target.refId,
+          fields: [
+            { name: 'Time', values: [from, to], type: FieldType.time },
+          ],
+        });
+      }
+
       //Undefined or element
       if(!target.queryType || target.queryType === 'Element List'){
         let query = this.buildQueryParameters(options);
@@ -69,20 +97,16 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           return !t.hide;
         });
 
-        const pointsData = await getBackendSrv().datasourceRequest({
-          url: this.url + '/query',
-          data: query,
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        })
+        const pointsData = await this.dataQuery(query)
         
         //Declare frames
         const frame = new MutableDataFrame({
           refId: target.refId,
           fields: [
             { name: 'time', type: FieldType.time },
-          ],
+          ] 
         });
+
 
         //Add fields
         for (const entry of pointsData["data"]) {
@@ -120,7 +144,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           refId: target.refId,
           fields: [
             { name: 'Time', values: [from, to], type: FieldType.time },
-            //{ name: 'Value', values: [target.constant, target.constant], type: FieldType.number },
           ],
         });
     });
