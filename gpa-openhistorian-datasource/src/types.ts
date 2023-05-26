@@ -25,4 +25,8 @@ export const DEFAULT_QUERY: Partial<MyQuery> = {
  */
 export interface MyDataSourceOptions extends DataSourceJsonData {
   http: DataSourceSettings<any, any>;
+  flags: {
+    [key: string]: boolean;
+  }
+  
 }
