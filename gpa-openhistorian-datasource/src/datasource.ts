@@ -28,7 +28,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
-    this.url = instanceSettings.jsonData.url || "";
+    console.log(instanceSettings)
+    this.url = instanceSettings.jsonData.http.url || "";
   }
 
   //List of all elements
@@ -49,7 +50,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       headers: { 'Content-Type': 'application/json' }
     })
   }
-  
+
   fixTemplates(target: MyQuery) {
     if (target === undefined){
       return '';
@@ -146,7 +147,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         }
 
         
-        console.log(fieldMetadata)
+        //console.log(fieldMetadata)
+        
 
         //Intermediate object to group points by timestamp
         const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = groupPoints(pointsData);
