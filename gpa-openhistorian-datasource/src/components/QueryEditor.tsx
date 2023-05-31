@@ -11,9 +11,9 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   //const { queryText, elements } = query;
 
   const selectOptions = [
-    { label: 'Element List', value: "Element List" },
-    { label: 'Filter Expression', value: "Filter" },
-    { label: 'Text Editor', value: "Text" },
+    { label: 'Element List', value: 'Element List' },
+    { label: 'Filter Expression', value: 'Filter' },
+    { label: 'Text Editor', value: 'Text' },
   ];
 
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(selectOptions[0]);
@@ -22,7 +22,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   const onSearchChange = (selected: SelectableValue<string>) => {
     setTypeValue(selected);
     if (selected) {
-      onChange({ ...query, queryType: selected.value! }); 
+      onChange({ ...query, queryType: selected.value! });
     }
   };
 
@@ -33,38 +33,39 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     // Trigger the query execution
     onRunQuery();
   };
-  
-  const renderAsyncMultiSelect = () => {
-    const loadAsyncOptions = async () => {
-      const response = await datasource.searchQuery()
 
-      const asyncOptions = response.data.map((element: string) => ({
+  const loadAsyncOptions = async (inputValue: string) => {
+    const response = await datasource.searchQuery();
+
+    const asyncOptions = response.data
+      .filter((element: string) => element.toLowerCase().includes(inputValue.toLowerCase()))
+      .map((element: string) => ({
         label: element,
         value: element,
       }));
 
-      //Sort alphabetically
-      asyncOptions.sort((a: { label: string; value: string; }, b: { label: string; value: string; }) => a.label.localeCompare(b.label)); 
-    
-      return asyncOptions;
-    };
-    
+    // Sort alphabetically
+    asyncOptions.sort((a: { label: string; value: string }, b: { label: string; value: string }) =>
+      a.label.localeCompare(b.label)
+    );
 
+    return asyncOptions;
+  };
+
+  const renderAsyncMultiSelect = () => {
     return (
       <InlineField label="Elements" labelWidth={10}>
-        {/* <div style={{ width: 'auto' }}> */}
         <AsyncMultiSelect
           loadOptions={loadAsyncOptions}
           defaultOptions
           value={elementsValue}
           onChange={onElementsChange}
+          isSearchable
         />
-        {/* </div> */}
       </InlineField>
     );
-  }
+  };
 
-  
   return (
     <div className="gf-form">
       <InlineField label="TYPE" labelWidth={10}>
