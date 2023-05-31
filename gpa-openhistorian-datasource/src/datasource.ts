@@ -11,6 +11,7 @@ import {
 import { MyQuery, MyDataSourceOptions } from './types';
 import { getBackendSrv } from '@grafana/runtime';
 import _ from 'lodash';
+import { DefaultFlags } from './js/constants'
 
 interface CustomQueryResultMeta extends QueryResultMeta {
   fields: {
@@ -25,11 +26,15 @@ interface CustomQueryResultMeta extends QueryResultMeta {
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url: string;
+  flags: {
+    [key: string]: boolean;
+  };
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
     console.log(instanceSettings)
     this.url = instanceSettings.jsonData.http.url || "";
+    this.flags = instanceSettings.jsonData.flags || {}; 
   }
 
   //List of all elements
@@ -51,6 +56,18 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     })
   }
 
+  calculateFlags() {
+    let excludedValue = 0;
+
+    for (const [key, value] of Object.entries(this.flags)) {
+      if (key !== "Select All" && key !== "Normal" && value === true) {
+        excludedValue ^= DefaultFlags[key as keyof typeof DefaultFlags].Flag;
+      }
+    }
+
+    return excludedValue;
+  }
+
   fixTemplates(target: MyQuery) {
     if (target === undefined){
       return '';
@@ -65,24 +82,25 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   buildQueryParameters(options: DataQueryRequest<MyQuery>) {
-      let _this = this; 
+    let _this = this; 
 
-      let targets = _.map(options.targets, function (target) {
-          return {
-          target: _this.fixTemplates(target),
-          refId: target.refId,
-          hide: target.hide, 
-          excludedFlags: 0,
-          excludeNormalFlags: false,
-          queryType: target.queryType,
-          elements: target.elements,
-          queryOptions: target.queryOptions
-          };
-      });
-      // options.targets = 
-      options.targets = targets;
+    let targets = _.map(options.targets, function (target) {
+      console.log(target)
+      return {
+      target: _this.fixTemplates(target),
+      refId: target.refId,
+      hide: target.hide, 
+      excludedFlags: _this.calculateFlags(),
+      excludeNormalFlags: _this.flags["Select All"] ? _this.flags["Select All"] : false,
+      queryType: target.queryType,
+      elements: target.elements,
+      queryOptions: target.queryOptions
+      };
+    });
+    // options.targets = 
+    options.targets = targets;
 
-      return options;
+    return options;
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
