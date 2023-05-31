@@ -20,24 +20,35 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({ ...options, jsonData });
   };
 
+  const { jsonData } = options;
+
+
   const onSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = event.target;
-    console.log(name, checked);
 
     let updatedFlags: { [key: string]: boolean } = {};
 
+    //Select All
     if (name === 'Select All') {
-      // If 'Select All' switch is toggled, set all other switches to true
-      Object.keys(DefaultFlags).forEach((element) => {
-        if (element !== 'Select All') {
+      //Select All Undefined or false
+      if(options["jsonData"]["flags"]["Select All"] === undefined || options["jsonData"]["flags"]["Select All"] === false){
+        Object.keys(DefaultFlags).forEach((element) => {
           updatedFlags[element] = true;
-        }
-      });
+        });
+      }
+      //True
+      else{
+        Object.keys(DefaultFlags).forEach((element) => {
+          updatedFlags[element] = false;
+        });
+      }
+      
     } else {
       // If other switches are toggled, update their respective values
       updatedFlags = {
         ...options.jsonData.flags,
         [name]: checked,
+        ['Select All']: false,
       };
     }
 
@@ -46,11 +57,8 @@ export function ConfigEditor(props: Props) {
     flags: updatedFlags,
   };
     
-    console.log(jsonData)
     onOptionsChange({ ...options, jsonData });
   };
-
-  const { jsonData } = options;
 
   return (
     <div className="gf-form-group">
