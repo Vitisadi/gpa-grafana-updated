@@ -32,7 +32,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
-    console.log(instanceSettings)
     this.url = instanceSettings.jsonData.http.url || "";
     this.flags = instanceSettings.jsonData.flags || {}; 
   }
@@ -56,6 +55,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     })
   }
 
+  //Generate value of excluded flags
   calculateFlags() {
     let excludedValue = 0;
 
@@ -85,7 +85,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     let _this = this; 
 
     let targets = _.map(options.targets, function (target) {
-      console.log(target)
       return {
       target: _this.fixTemplates(target),
       refId: target.refId,

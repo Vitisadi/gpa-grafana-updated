@@ -1,4 +1,4 @@
-//import React, { ChangeEvent, useState } from 'react';
+// import React, { ChangeEvent, useState } from 'react';
 import React, { useState } from 'react';
 import { InlineField, Select, AsyncMultiSelect } from '@grafana/ui';
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
@@ -8,7 +8,7 @@ import { MyDataSourceOptions, MyQuery } from '../types';
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
-  //const { queryText, elements } = query;
+  // const { queryText, elements } = query;
 
   const selectOptions = [
     { label: 'Element List', value: 'Element List' },
@@ -54,27 +54,24 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
   const renderAsyncMultiSelect = () => {
     return (
-      <InlineField label="Elements" labelWidth={10}>
-        <AsyncMultiSelect
-          loadOptions={loadAsyncOptions}
-          defaultOptions
-          value={elementsValue}
-          onChange={onElementsChange}
-          isSearchable
-        />
-      </InlineField>
+      <div style={{ width: '100%' }}> {/* Add this wrapper div to make the AsyncMultiSelect span the full width */}
+        <InlineField label="Elements" labelWidth={10}>
+          <AsyncMultiSelect
+            loadOptions={loadAsyncOptions}
+            defaultOptions
+            value={elementsValue}
+            onChange={onElementsChange}
+            isSearchable
+          />
+        </InlineField>
+      </div>
     );
   };
 
   return (
-    <div className="gf-form">
+    <div className="gf-form" style={{ display: 'flex', flexDirection: 'column' }}> {/* Add flexbox styles to make the elements stack vertically */}
       <InlineField label="TYPE" labelWidth={10}>
-        <Select
-          options={selectOptions}
-          value={typeValue}
-          onChange={onSearchChange}
-          allowCustomValue
-        />
+        <Select options={selectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
       </InlineField>
       {typeValue?.value === 'Element List' && renderAsyncMultiSelect()}
     </div>
