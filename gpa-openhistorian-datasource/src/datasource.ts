@@ -146,36 +146,21 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
             { name: 'Time', type: FieldType.time },
           ],
           meta: {
-            fields: {
-              time: {}, 
-            },
+            fields: {},
           } as CustomQueryResultMeta, // Use the custom interface
         });
 
         const metadata = frame.meta as CustomQueryResultMeta;
         const fieldMetadata = metadata.fields;
 
-        //Initialize the field metadata        
-        // fieldMetadata.time.latitude = 35.043621;
-        // fieldMetadata.time.longitude = -85.308990;
-
-        // console.log(fieldMetadata.time.latitude);
-        // console.log(fieldMetadata.time.longitude);
-
-
-        
         //Add fields & meta data
         for (const entry of pointsData["data"]) {
           frame.addField({ name: entry["target"], type: FieldType.number })
           fieldMetadata[entry["target"]] = {
-            latitude: 35.043621,
-            longitude: -85.308990
+            latitude: entry["meta"]["custom"]["Latitude"],
+            longitude: entry["meta"]["custom"]["Longitude"]
           }
-        }
-
-        
-        //console.log(fieldMetadata)
-        
+        }                
 
         //Intermediate object to group points by timestamp
         const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = groupPoints(pointsData);

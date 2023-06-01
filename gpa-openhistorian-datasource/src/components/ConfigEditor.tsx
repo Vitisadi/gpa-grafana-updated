@@ -97,7 +97,7 @@ export function ConfigEditor(props: Props) {
       </InlineFieldRow>
       <h3>Open Historian Alarms</h3>
       <InlineFieldRow>
-        <InlineField label={"Update Alarms based on openHistorian Alarms"} labelWidth={40}>
+        <InlineField label={"Update Alarms based on openHistorian Alarms"} labelWidth={34}>
           <div className="dark-box">
             <Switch
               name={"alarms"}
