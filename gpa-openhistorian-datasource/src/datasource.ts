@@ -29,11 +29,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   flags: {
     [key: string]: boolean;
   };
+  updateAlarms: boolean;
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
     this.url = instanceSettings.jsonData.http.url || "";
     this.flags = instanceSettings.jsonData.flags || {}; 
+    this.updateAlarms = instanceSettings.jsonData.alarms || false;
   }
 
   //List of all elements
@@ -83,20 +85,28 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
   buildQueryParameters(options: DataQueryRequest<MyQuery>) {
     let _this = this; 
+    const excludedFlags = _this.calculateFlags()
+    const excludeNormalFlags = _this.flags["Normal"] ? _this.flags["Normal"] : false
 
     let targets = _.map(options.targets, function (target) {
       return {
-      target: _this.fixTemplates(target),
-      refId: target.refId,
-      hide: target.hide, 
-      excludedFlags: _this.calculateFlags(),
-      excludeNormalFlags: _this.flags["Select All"] ? _this.flags["Select All"] : false,
-      queryType: target.queryType,
-      elements: target.elements,
-      queryOptions: target.queryOptions
+        target: _this.fixTemplates(target),
+        refId: target.refId,
+        hide: target.hide, 
+        excludedFlags: excludedFlags,
+        excludeNormalFlags: excludeNormalFlags,
+        updateAlarms: _this.updateAlarms,
+        queryOptions: {
+          excludedFlags: excludedFlags,
+          excludeNormalFlags:excludeNormalFlags,
+          updateAlarms: _this.updateAlarms,
+        },
+        queryType: target.queryType ? target.queryType : "Element List",
+        elements: target.elements,
       };
     });
-    // options.targets = 
+    
+
     options.targets = targets;
 
     return options;

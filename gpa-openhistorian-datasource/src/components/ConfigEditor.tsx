@@ -23,7 +23,7 @@ export function ConfigEditor(props: Props) {
   const { jsonData } = options;
 
 
-  const onSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onFlagChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = event.target;
 
     let updatedFlags: { [key: string]: boolean } = {};
@@ -52,13 +52,24 @@ export function ConfigEditor(props: Props) {
       };
     }
 
-  const jsonData = {
-    ...options.jsonData,
-    flags: updatedFlags,
-  };
+    const jsonData = {
+      ...options.jsonData,
+      flags: updatedFlags,
+    };
     
     onOptionsChange({ ...options, jsonData });
   };
+
+  const onAlarmChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { checked } = event.target;
+
+    const jsonData = {
+      ...options.jsonData,
+      alarms: checked,
+    };
+
+    onOptionsChange({ ...options, jsonData });
+  }
 
   return (
     <div className="gf-form-group">
@@ -78,11 +89,24 @@ export function ConfigEditor(props: Props) {
                 name={element}
                 disabled={false}
                 value={jsonData.flags && jsonData.flags[element] ? jsonData.flags[element] : false}
-                onChange={onSwitchChange}
+                onChange={onFlagChange}
               />
             </div>
           </InlineField>
         ))}
+      </InlineFieldRow>
+      <h3>Open Historian Alarms</h3>
+      <InlineFieldRow>
+        <InlineField label={"Update Alarms based on openHistorian Alarms"} labelWidth={40}>
+          <div className="dark-box">
+            <Switch
+              name={"alarms"}
+              disabled={false}
+              value={jsonData.alarms ? jsonData.alarms : false}
+              onChange={onAlarmChange}
+            />
+          </div>
+        </InlineField>
       </InlineFieldRow>
     </div>
   );
