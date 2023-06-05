@@ -18,6 +18,8 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
   flags: {
     [key: string]: boolean;
   };
-  alarms: boolean;
-  
+  metadata: {
+    [key: string]: boolean;
+  },
+  allMetadataOptions: string[];  
 }

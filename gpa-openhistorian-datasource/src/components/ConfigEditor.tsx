@@ -1,8 +1,17 @@
-import React from 'react';
-import { DataSourceHttpSettings, InlineFieldRow, InlineField, Switch } from '@grafana/ui';
+import { 
+  DataSourceHttpSettings,
+  InlineFieldRow, 
+  InlineField, 
+  Switch, 
+  Tooltip, 
+  Button,
+} from '@grafana/ui';
+
+import React, { useState, useCallback  } from 'react';
 import { DataSourcePluginOptionsEditorProps, DataSourceSettings } from '@grafana/data';
 import { MyDataSourceOptions } from '../types';
 import { DefaultFlags } from '../js/constants';
+import { getBackendSrv } from '@grafana/runtime';
 import '../css/config-editor.css';
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
@@ -17,59 +26,124 @@ export function ConfigEditor(props: Props) {
       http: config,
     };
 
+    console.log("Version 3")
+
     onOptionsChange({ ...options, jsonData });
   };
 
   const { jsonData } = options;
 
 
-  const onFlagChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = event.target;
-
-    let updatedFlags: { [key: string]: boolean } = {};
-
-    //Select All
+  const updateData = (optionsData: any, elements: string[], selectAllState: boolean) => {
+    let updatedData: { [key: string]: boolean } = {};
+  
+    elements.forEach((element: string) => {
+      updatedData[element] = selectAllState;
+    });
+  
+    return updatedData;
+  };
+  
+  const onSwitchChange = (type: "flags" | "metadata") => (event: React.FormEvent<HTMLInputElement>) => {
+    const input = event.target as HTMLInputElement;
+    const { name, checked } = input;
+    
+    let elements: string[] = [];
+    let updatedData: { [key: string]: boolean } = {};
+  
+    // Select All
     if (name === 'Select All') {
-      //Select All Undefined or false
-      if(options["jsonData"]["flags"]["Select All"] === undefined || options["jsonData"]["flags"]["Select All"] === false){
-        Object.keys(DefaultFlags).forEach((element) => {
-          updatedFlags[element] = true;
-        });
+      if (type === 'metadata') {
+        elements = options.jsonData.allMetadataOptions || [];
+      } else if (type === 'flags') {
+        elements = Object.keys(DefaultFlags || {});
       }
-      //True
-      else{
-        Object.keys(DefaultFlags).forEach((element) => {
-          updatedFlags[element] = false;
-        });
-      }
-      
+  
+      const selectAllState = !options.jsonData[type] || options.jsonData[type]["Select All"] === undefined || options.jsonData[type]["Select All"] === false;
+      updatedData = updateData(options.jsonData[type], elements, selectAllState);
     } else {
-      // If other switches are toggled, update their respective values
-      updatedFlags = {
-        ...options.jsonData.flags,
+      //If other switches are toggled, update their respective values
+      updatedData = {
+        ...options.jsonData[type],
         [name]: checked,
         ['Select All']: false,
       };
     }
-
+  
     const jsonData = {
       ...options.jsonData,
-      flags: updatedFlags,
+      [type]: updatedData,
     };
-    
+  
     onOptionsChange({ ...options, jsonData });
   };
+  
+  
+  
+  
+  
+  
 
-  const onAlarmChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { checked } = event.target;
 
-    const jsonData = {
-      ...options.jsonData,
-      alarms: checked,
-    };
+  const [metaDataOptions, setMetaDataOptions] = useState<string[]>([]);
 
-    onOptionsChange({ ...options, jsonData });
-  }
+  const fetchMetadataOptions = useCallback(async () => {
+    const newOptions = ["Select All", "A", "B", "C", "D"];
+    try {
+      const url = jsonData.http ? jsonData.http.url : '';
+      setMetaDataOptions(newOptions);
+      //return newOptions
+  
+      //If the URL is not defined
+      if (!url || '') {
+        onOptionsChange({
+          ...options,
+          jsonData: { ...jsonData, allMetadataOptions: newOptions }
+        });
+        return ["Select All"];
+      }
+  
+      const response = await getBackendSrv().datasourceRequest({
+        url: url + '/getmetadataoptions',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      //Add "Select All" to the beginning of the array
+      const optionsWithSelectAll = ["Select All"].concat(response.data);
+  
+      onOptionsChange({
+        ...options,
+        jsonData: { ...jsonData, allMetadataOptions: optionsWithSelectAll }
+      });
+  
+      setMetaDataOptions(optionsWithSelectAll);
+  
+      console.log(response)
+      return optionsWithSelectAll;
+    } catch (error: any) {
+      console.log(error)
+      
+      //If the response status is 404
+      if (error.status === 404) {
+        onOptionsChange({
+          ...options,
+          jsonData: { ...jsonData, allMetadataOptions: newOptions }
+        });
+        return ["Select All"];
+      }
+
+      // In case of any error, set metadata options as ["Select All"]
+      setMetaDataOptions(["Select All"]);
+      return ["Select All"]
+    }
+  }, [options, onOptionsChange, jsonData]);
+
+  
+
+  const refreshMetadataOptions = () => {
+    fetchMetadataOptions();
+  };
 
   return (
     <div className="gf-form-group">
@@ -80,7 +154,12 @@ export function ConfigEditor(props: Props) {
         onChange={onHttpChange}
       />
 
-      <h3>Excluded Data Flags</h3>
+      <h4>
+        Excluded Data Flags
+        <Tooltip content="Mark flags which you want excluded">
+          <span style={{ cursor: 'help' }}> 🛈</span>
+        </Tooltip>
+      </h4>
       <InlineFieldRow>
         {Object.keys(DefaultFlags).map((element, index) => (
           <InlineField key={index} label={element} labelWidth={16} >
@@ -89,24 +168,33 @@ export function ConfigEditor(props: Props) {
                 name={element}
                 disabled={false}
                 value={jsonData.flags && jsonData.flags[element] ? jsonData.flags[element] : false}
-                onChange={onFlagChange}
+                onChange={onSwitchChange('flags')}
               />
             </div>
           </InlineField>
         ))}
       </InlineFieldRow>
-      <h3>Open Historian Alarms</h3>
+
+      <h4>
+        Included Meta Data
+        <Tooltip content="Mark meta data which you want included">
+          <span style={{ cursor: 'help' }}> 🛈</span>
+        </Tooltip>
+        <Button onClick={refreshMetadataOptions}>Refresh</Button>
+      </h4>
       <InlineFieldRow>
-        <InlineField label={"Update Alarms based on openHistorian Alarms"} labelWidth={34}>
-          <div className="dark-box">
-            <Switch
-              name={"alarms"}
-              disabled={false}
-              value={jsonData.alarms ? jsonData.alarms : false}
-              onChange={onAlarmChange}
-            />
-          </div>
-        </InlineField>
+        {metaDataOptions.map((element, index) => (
+          <InlineField key={index} label={element} labelWidth={16} >
+            <div className="dark-box">
+              <Switch
+                name={element}
+                disabled={false}
+                value={jsonData.metadata && jsonData.metadata[element] ? jsonData.metadata[element] : false}
+                onChange={onSwitchChange('metadata')}
+              />
+            </div>
+          </InlineField>
+        ))}
       </InlineFieldRow>
     </div>
   );
