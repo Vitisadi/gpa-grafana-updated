@@ -13,13 +13,13 @@ import { getBackendSrv } from '@grafana/runtime';
 import _ from 'lodash';
 import { DefaultFlags } from './js/constants'
 
+interface FieldMeta {
+  [key: string]: number | undefined;
+}
+
 interface CustomQueryResultMeta extends QueryResultMeta {
   fields: {
-    [fieldName: string]: {
-      latitude?: number;
-      longitude?: number;
-      // Add any other metadata properties as needed
-    };
+    [fieldName: string]: FieldMeta;
   };
 }
 
@@ -29,13 +29,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   flags: {
     [key: string]: boolean;
   };
-  updateAlarms: boolean;
+  metadata: {
+    [key: string]: boolean;
+  };
+
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
 
     this.url = instanceSettings.jsonData.http.url || "";
-    this.flags = instanceSettings.jsonData.flags || {}; 
-    this.updateAlarms = instanceSettings.jsonData.alarms || false;
+    this.flags = instanceSettings.jsonData.flags || {};
+    this.metadata = instanceSettings.jsonData.metadata || {};
+     
   }
 
   //List of all elements
@@ -56,6 +60,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       headers: { 'Content-Type': 'application/json' }
     })
   }
+
+  //Information on specific elements
+  // async metadataOptionsQuery() {
+  // const response = await getBackendSrv().datasourceRequest({
+  //   url: this.url + '/getmetadataoptions',
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' }
+  // });
+  // return response.data;
+  // }
+
 
   //Generate value of excluded flags
   calculateFlags() {
@@ -95,11 +110,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         hide: target.hide, 
         excludedFlags: excludedFlags,
         excludeNormalFlags: excludeNormalFlags,
-        updateAlarms: _this.updateAlarms,
         queryOptions: {
           excludedFlags: excludedFlags,
           excludeNormalFlags:excludeNormalFlags,
-          updateAlarms: _this.updateAlarms,
         },
         queryType: target.queryType ? target.queryType : "Element List",
         elements: target.elements,
@@ -117,7 +130,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
 
-    // Return a constant for each query.
+    //Filter metadata options to include only those that are selected (true)
+    const selectedMetadataOptions = Object.keys(this.metadata).filter(
+      key => this.metadata[key] === true
+    );
+
+    //Return a constant for each query.
     const dataPromises = options.targets.map(async (target) => { 
       if(!target.elements){
         return new MutableDataFrame({
@@ -138,6 +156,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         });
 
         const pointsData = await this.dataQuery(query)
+        // const test1Data = await this.metadataQuery(query)
+        // console.log(test1Data)
+        // const test2Data = await this.metadataOptionsQuery()
+        // console.log(test2Data)
         
         //Declare frames
         const frame = new MutableDataFrame({
@@ -156,16 +178,21 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         //Add fields & meta data
         for (const entry of pointsData["data"]) {
           frame.addField({ name: entry["target"], type: FieldType.number })
-          fieldMetadata[entry["target"]] = {
-            latitude: entry["meta"]["custom"]["Latitude"],
-            longitude: entry["meta"]["custom"]["Longitude"]
+          const entryMeta = entry["meta"]["custom"];
+    
+          //Initialize metadata for current field
+          fieldMetadata[entry["target"]] = {};
+
+          //Populate selected metadata options
+          for (const metadataOption of selectedMetadataOptions) {
+            fieldMetadata[entry["target"]][metadataOption] = entryMeta[metadataOption];
           }
-        }                
+        }               
 
         //Intermediate object to group points by timestamp
         const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = groupPoints(pointsData);
 
-        // Iterate through grouped points and add them to the frame
+        //Iterate through grouped points and add them to the frame
         for (const timestamp in groupedPoints) {
           const data: { [key: string]: any } = { Time: parseInt(timestamp, 10) };
           Object.assign(data, groupedPoints[timestamp]);
