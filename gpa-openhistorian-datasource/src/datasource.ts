@@ -23,6 +23,14 @@ interface CustomQueryResultMeta extends QueryResultMeta {
   };
 }
 
+interface MetadataTarget {
+  refId: string;
+  target: string;
+  type: string;
+  excludedFlags: number;
+  excludeNormalFlags: boolean;
+}
+
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url: string;
@@ -60,6 +68,28 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       headers: { 'Content-Type': 'application/json' }
     })
   }
+
+  //Metadata of specific elements
+  async metadataQuery(target: MetadataTarget){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + '/getmetadata',
+      data: target,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Metadata of specific elements
+  async metadatasQuery(targets: MetadataTarget[]){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + '/getmetadatas',
+      data: targets,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+
 
   //Information on specific elements
   // async metadataOptionsQuery() {
@@ -125,6 +155,29 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return options;
   }
 
+  buildMetadataParameters(options: DataQueryRequest<MyQuery>): MetadataTarget[] {
+    let _this = this; 
+    const excludedFlags = _this.calculateFlags()
+    const excludeNormalFlags = _this.flags["Normal"] ? _this.flags["Normal"] : false
+  
+    const targets: MetadataTarget[] = [];
+  
+    options.targets.forEach(function (target) {
+      for(const element of target.elements){
+        targets.push({
+          refId: target.refId,
+          target: element,
+          type: "table", 
+          excludedFlags: excludedFlags,
+          excludeNormalFlags: excludeNormalFlags
+        });
+      }
+    });
+  
+    return targets;
+  }
+
+
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
     const { range } = options;
     const from = range!.from.valueOf();
@@ -132,7 +185,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     //Filter metadata options to include only those that are selected (true)
     const selectedMetadataOptions = Object.keys(this.metadata).filter(
-      key => this.metadata[key] === true
+      key => this.metadata[key] === true && key !== "Select All"
     );
 
     //Return a constant for each query.
@@ -155,11 +208,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           return !t.hide;
         });
 
+        //Get Data
         const pointsData = await this.dataQuery(query)
-        // const test1Data = await this.metadataQuery(query)
-        // console.log(test1Data)
-        // const test2Data = await this.metadataOptionsQuery()
-        // console.log(test2Data)
+
+        let metadataParameters = this.buildMetadataParameters(options);
+        const metadataResponse = await this.metadatasQuery(metadataParameters)
+        let metadataParsed = JSON.parse(metadataResponse.data);
+
         
         //Declare frames
         const frame = new MutableDataFrame({
@@ -178,16 +233,19 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         //Add fields & meta data
         for (const entry of pointsData["data"]) {
           frame.addField({ name: entry["target"], type: FieldType.number })
-          const entryMeta = entry["meta"]["custom"];
+          //const entryMeta = entry["meta"]["custom"];
     
           //Initialize metadata for current field
           fieldMetadata[entry["target"]] = {};
 
           //Populate selected metadata options
           for (const metadataOption of selectedMetadataOptions) {
-            fieldMetadata[entry["target"]][metadataOption] = entryMeta[metadataOption];
+            fieldMetadata[entry["target"]][metadataOption] = metadataParsed[entry["target"]][0][metadataOption]
           }
-        }               
+        }
+        
+        console.log("Meta Data")
+        console.log(metadata)
 
         //Intermediate object to group points by timestamp
         const groupedPoints: { [timestamp: number]: { [target: string]: number; }; } = groupPoints(pointsData);
