@@ -162,8 +162,8 @@ export function ConfigEditor(props: Props) {
       </InlineFieldRow>
 
       <h4>
-        Included Meta Data
-        <Button onClick={refreshMetadataOptions}>Refresh</Button>
+        Included Meta Data{' '}
+        <Button onClick={refreshMetadataOptions} className="dark-button">Refresh</Button>
         <Tooltip content="Mark meta data which you want included">
           <span style={{ cursor: "help" }}> 🛈</span>
         </Tooltip>

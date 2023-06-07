@@ -12,3 +12,8 @@
 .dark-box .switch::before {
   background-color: white; /* Change the color of the switch thumb */
 }
+
+.dark-button {
+  background-color: rgb(34,37,43); 
+  color: rgb(199,204,220); 
+}
