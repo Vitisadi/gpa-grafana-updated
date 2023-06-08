@@ -37,7 +37,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     [key: string]: boolean;
   };
   metadata: {
-    [key: string]: boolean;
+    [tableName: string]: {
+      [columnName: string]: boolean;
+    };
   };
 
   constructor(
@@ -176,9 +178,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const to = range!.to.valueOf();
 
     //Filter metadata options to include only those that are selected (true)
-    const selectedMetadataOptions = Object.keys(this.metadata).filter(
-      (key) => this.metadata[key] === true && key !== "Select All"
-    );
+    const selectedMetadataOptions: string[] = [];
+
+    Object.entries(this.metadata).forEach(([tableName, columns]) => {
+      Object.entries(columns).forEach(([columnName, value]) => {
+        if (value === true && columnName !== "Select All") {
+          selectedMetadataOptions.push(`${tableName}:${columnName}`);
+        }
+      });
+    });
 
     // Use only the first target. You will need to decide how to select this based on your application logic.
     const target = options.targets[0];
@@ -249,6 +257,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         Object.assign(data, groupedPoints[timestamp]);
         frame.add(data);
       }
+
+      console.log(frame)
 
       return { data: [frame] };
     }

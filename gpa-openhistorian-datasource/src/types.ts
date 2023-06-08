@@ -19,6 +19,8 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
     [key: string]: boolean;
   };
   metadata: {
-    [key: string]: boolean;
-  },
+    [tableName: string]: {
+      [columnName: string]: boolean;
+    };
+  };
 }
