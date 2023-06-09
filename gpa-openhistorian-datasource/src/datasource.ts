@@ -14,7 +14,9 @@ import _ from "lodash";
 import { DefaultFlags } from "./js/constants";
 
 interface FieldMeta {
-  [key: string]: number | undefined;
+  [key: string]: {
+    [fieldname: string]: string[];
+  };
 }
 
 interface CustomQueryResultMeta extends QueryResultMeta {
@@ -133,6 +135,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       },
       queryType: target.queryType ? target.queryType : "Element List",
       elements: target.elements,
+      queryText: target.queryText,
     }));
 
     options.targets = targets;
@@ -168,16 +171,18 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
 
-    //Filter metadata options to include only those that are selected (true)
-    const selectedMetadataOptions: string[] = [];
+    const selectedMetadataOptions: { [key: string]: string[] } = {};
 
     Object.entries(this.metadata).forEach(([tableName, columns]) => {
-      Object.entries(columns).forEach(([columnName, value]) => {
-        if (value === true && columnName !== "Select All") {
-          selectedMetadataOptions.push(`${tableName}:${columnName}`);
-        }
-      });
+      const metadataNames = Object.entries(columns)
+        .filter(([columnName, value]) => value === true && columnName !== "Select All")
+        .map(([columnName]) => columnName);
+
+      if (metadataNames.length > 0) {
+        selectedMetadataOptions[tableName] = metadataNames;
+      }
     });
+
 
     // Use only the first target. You will need to decide how to select this based on your application logic.
     const target = options.targets[0];
@@ -208,9 +213,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       const pointsData = await this.dataQuery(query);
 
       let metadataParameters = this.buildMetadataParameters(options);
-      console.log(metadataParameters)
       const metadataResponse = await this.metadatasQuery(metadataParameters);
-      console.log(metadataResponse)
       let metadataParsed = JSON.parse(metadataResponse.data);
       console.log(metadataParsed)
 
@@ -234,11 +237,33 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         // Initialize metadata for current field
         fieldMetadata[entry["target"]] = {};
 
-        // Populate selected metadata options
+        //Populate selected metadata options
         // for (const metadataOption of selectedMetadataOptions) {
         //   fieldMetadata[entry["target"]][metadataOption] =
         //     metadataParsed[entry["target"]][0][metadataOption];
         // }
+        console.log(selectedMetadataOptions)
+        // for (const tableName in selectedMetadataOptions) {
+        //   if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
+        //     continue
+        //   }
+        //   for (const metadataOption of selectedMetadataOptions) {
+        //     fieldMetadata[entry["target"]][tableName][metadataOption]
+        //       = metadataParsed[entry["target"]][tableName][0][metadataOption];
+        //   }
+        // }
+        
+        for (const tableName in selectedMetadataOptions) {
+          if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
+            continue;
+          }
+          fieldMetadata[entry["target"]][tableName] = {};
+          const metadataOptions = selectedMetadataOptions[tableName];
+          for (const metadataOption of metadataOptions) {
+            fieldMetadata[entry["target"]][tableName][metadataOption] = metadataParsed[entry["target"]][tableName][0][metadataOption];
+          }
+        }        
+        
       }
 
       // Intermediate object to group points by timestamp
