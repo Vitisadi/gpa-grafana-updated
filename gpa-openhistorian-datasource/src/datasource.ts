@@ -24,11 +24,8 @@ interface CustomQueryResultMeta extends QueryResultMeta {
 }
 
 interface MetadataTarget {
-  refId: string;
   target: string;
-  type: string;
-  excludedFlags: number;
-  excludeNormalFlags: boolean;
+  tables: string[];
 }
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
@@ -146,12 +143,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   buildMetadataParameters(
     options: DataQueryRequest<MyQuery>
   ): MetadataTarget[] {
-    const excludedFlags = this.calculateFlags();
-    const excludeNormalFlags = this.flags["Normal"]
-      ? this.flags["Normal"]
-      : false;
 
     const targets: MetadataTarget[] = [];
+    const tables: string[] = Object.keys(this.metadata);
 
     for (const target of options.targets) {
       if (!target.elements) {
@@ -160,11 +154,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       for (const element of target.elements) {
         targets.push({
-          refId: target.refId,
           target: element,
-          type: "table",
-          excludedFlags: excludedFlags,
-          excludeNormalFlags: excludeNormalFlags,
+          tables: tables,
         });
       }
     }
@@ -217,8 +208,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       const pointsData = await this.dataQuery(query);
 
       let metadataParameters = this.buildMetadataParameters(options);
+      console.log(metadataParameters)
       const metadataResponse = await this.metadatasQuery(metadataParameters);
+      console.log(metadataResponse)
       let metadataParsed = JSON.parse(metadataResponse.data);
+      console.log(metadataParsed)
+
 
       // Declare frames
       const frame = new MutableDataFrame({
@@ -240,10 +235,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         fieldMetadata[entry["target"]] = {};
 
         // Populate selected metadata options
-        for (const metadataOption of selectedMetadataOptions) {
-          fieldMetadata[entry["target"]][metadataOption] =
-            metadataParsed[entry["target"]][0][metadataOption];
-        }
+        // for (const metadataOption of selectedMetadataOptions) {
+        //   fieldMetadata[entry["target"]][metadataOption] =
+        //     metadataParsed[entry["target"]][0][metadataOption];
+        // }
       }
 
       // Intermediate object to group points by timestamp

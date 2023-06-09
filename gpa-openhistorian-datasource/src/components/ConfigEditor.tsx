@@ -19,10 +19,11 @@ interface Props
 
 export function ConfigEditor(props: Props) {
   const { onOptionsChange, options } = props;
+  const { jsonData } = options;
   const [metadataOptions, setMetadataOptions] = useState<
     Array<{ label: string; options: Array<{ label: string }> }>
   >([]);  
-  const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>([]);
+  const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>();
 
   const onHttpChange = (config: DataSourceSettings<MyDataSourceOptions>) => {
     const jsonData = {
@@ -34,21 +35,6 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({ ...options, jsonData });
   };
 
-  const { jsonData } = options;
-
-  // const updateData = (
-  //   optionsData: any,
-  //   elements: string[],
-  //   selectAllState: boolean
-  // ) => {
-  //   let updatedData: { [key: string]: boolean } = {};
-
-  //   elements.forEach((element: string) => {
-  //     updatedData[element] = selectAllState;
-  //   });
-
-  //   return updatedData;
-  // };
 
 
   const onFlagsChange = (event: React.FormEvent<HTMLInputElement>) => {
