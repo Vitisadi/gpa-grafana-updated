@@ -103,17 +103,41 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return excludedValue;
   }
 
-  fixTemplates(target: MyQuery) {
+  targetToString(target: MyQuery) {
     if (target === undefined || target.elements === undefined) {
       return "";
     }
 
-    let sep = " ";
     if (!target.queryType || target.queryType === "Element List") {
-      sep = ";";
+      return target.elements.join(";");
+    }
+    else if(target.queryType === "Text Editor"){
+      return target.queryText
     }
 
-    return target.elements.join(sep);
+    else{
+      return ""
+    }
+  }
+
+  targetToList(target: MyQuery) {
+    if (target === undefined || target.elements === undefined) {
+      return [];
+    }
+
+
+    if (!target.queryType || target.queryType === "Element List") {
+      return target.elements;
+    }
+    else if(target.queryType === "Text Editor" && target.queryText){
+      return target.queryText.split(";")
+    }
+
+    else{
+      return []
+    }
+
+    
   }
 
 
@@ -124,7 +148,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       : false;
 
     const targets = options.targets.map((target) => ({
-      target: this.fixTemplates(target),
+      target: this.targetToString(target),
       refId: target.refId,
       hide: target.hide,
       excludedFlags: excludedFlags,
@@ -151,11 +175,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const tables: string[] = Object.keys(this.metadata);
 
     for (const target of options.targets) {
-      if (!target.elements) {
+      const elements = this.targetToList(target)
+      if (!elements) {
         continue;
       }
 
-      for (const element of target.elements) {
+      for (const element of elements) {
         targets.push({
           target: element,
           tables: tables,
@@ -184,121 +209,94 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     });
 
 
-    // Use only the first target. You will need to decide how to select this based on your application logic.
     const target = options.targets[0];
+    const blankQuery = {
+      data: [
+        new MutableDataFrame({
+          refId: target.refId,
+          fields: [
+            { name: "Time", values: [from, to], type: FieldType.time },
+          ],
+        }),
+      ],
+    };
 
     if (!target.elements) {
-      return {
-        data: [
-          new MutableDataFrame({
-            refId: target.refId,
-            fields: [
-              { name: "Time", values: [from, to], type: FieldType.time },
-            ],
-          }),
-        ],
-      };
+      return blankQuery
     }
 
-    // Undefined or element
-    if (!target.queryType || target.queryType === "Element List") {
-      let query = this.buildQueryParameters(options);
+    //Generate query
+    let query = this.buildQueryParameters(options);
 
-      // Remove all hidden elements
-      query.targets = query.targets.filter(function (t) {
-        return !t.hide;
-      });
+    // Remove all hidden elements
+    query.targets = query.targets.filter(function (t) {
+      return !t.hide;
+    });
 
-      // Get Data
-      const pointsData = await this.dataQuery(query);
+    // Get Data
+    let pointsData
+    let metadataParameters
+    try{
+      pointsData = await this.dataQuery(query);
+      metadataParameters = this.buildMetadataParameters(options);
+    }
+    catch(error) {
+      console.log(error)
+      return blankQuery
+    }
+    
 
-      let metadataParameters = this.buildMetadataParameters(options);
-      const metadataResponse = await this.metadatasQuery(metadataParameters);
-      let metadataParsed = JSON.parse(metadataResponse.data);
-      console.log(metadataParsed)
 
 
-      // Declare frames
-      const frame = new MutableDataFrame({
-        refId: target.refId,
-        fields: [{ name: "Time", type: FieldType.time }],
-        meta: {
-          fields: {},
-        } as CustomQueryResultMeta, // Use the custom interface
-      });
+    const metadataResponse = await this.metadatasQuery(metadataParameters);
+    let metadataParsed = JSON.parse(metadataResponse.data);
 
-      const metadata = frame.meta as CustomQueryResultMeta;
-      const fieldMetadata = metadata.fields;
+    // Declare frames
+    const frame = new MutableDataFrame({
+      refId: target.refId,
+      fields: [{ name: "Time", type: FieldType.time }],
+      meta: {
+        fields: {},
+      } as CustomQueryResultMeta, // Use the custom interface
+    });
 
-      // Add fields & meta data
-      for (const entry of pointsData["data"]) {
-        frame.addField({ name: entry["target"], type: FieldType.number });
+    const metadata = frame.meta as CustomQueryResultMeta;
+    const fieldMetadata = metadata.fields;
 
-        // Initialize metadata for current field
-        fieldMetadata[entry["target"]] = {};
+    // Add fields & meta data
+    for (const entry of pointsData["data"]) {
+      frame.addField({ name: entry["target"], type: FieldType.number });
 
-        //Populate selected metadata options
-        // for (const metadataOption of selectedMetadataOptions) {
-        //   fieldMetadata[entry["target"]][metadataOption] =
-        //     metadataParsed[entry["target"]][0][metadataOption];
-        // }
-        console.log(selectedMetadataOptions)
-        // for (const tableName in selectedMetadataOptions) {
-        //   if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
-        //     continue
-        //   }
-        //   for (const metadataOption of selectedMetadataOptions) {
-        //     fieldMetadata[entry["target"]][tableName][metadataOption]
-        //       = metadataParsed[entry["target"]][tableName][0][metadataOption];
-        //   }
-        // }
-        
-        for (const tableName in selectedMetadataOptions) {
-          if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
-            continue;
-          }
-          fieldMetadata[entry["target"]][tableName] = {};
-          const metadataOptions = selectedMetadataOptions[tableName];
-          for (const metadataOption of metadataOptions) {
-            fieldMetadata[entry["target"]][tableName][metadataOption] = metadataParsed[entry["target"]][tableName][0][metadataOption];
-          }
-        }        
-        
-      }
+      // Initialize metadata for current field
+      fieldMetadata[entry["target"]] = {};
 
-      // Intermediate object to group points by timestamp
-      const groupedPoints: {
-        [timestamp: number]: { [target: string]: number };
-      } = groupPoints(pointsData);
-
-      // Iterate through grouped points and add them to the frame
-      for (const timestamp in groupedPoints) {
-        const data: { [key: string]: any } = { Time: parseInt(timestamp, 10) };
-        Object.assign(data, groupedPoints[timestamp]);
-        frame.add(data);
-      }
-
-      console.log(frame)
-
-      return { data: [frame] };
+      //Populate selected metadata options
+      for (const tableName in selectedMetadataOptions) {
+        if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
+          continue;
+        }
+        fieldMetadata[entry["target"]][tableName] = {};
+        const metadataOptions = selectedMetadataOptions[tableName];
+        for (const metadataOption of metadataOptions) {
+          fieldMetadata[entry["target"]][tableName][metadataOption] = metadataParsed[entry["target"]][tableName][0][metadataOption];
+        }
+      }        
     }
 
-    // else if(target.queryType === 'filter'){
-    // }
-    // else if(target.queryType === 'text'){
-    // }
-    else {
-      return {
-        data: [
-          new MutableDataFrame({
-            refId: target.refId,
-            fields: [
-              { name: "Time", values: [from, to], type: FieldType.time },
-            ],
-          }),
-        ],
-      };
+    // Intermediate object to group points by timestamp
+    const groupedPoints: {
+      [timestamp: number]: { [target: string]: number };
+    } = groupPoints(pointsData);
+
+    // Iterate through grouped points and add them to the frame
+    for (const timestamp in groupedPoints) {
+      const data: { [key: string]: any } = { Time: parseInt(timestamp, 10) };
+      Object.assign(data, groupedPoints[timestamp]);
+      frame.add(data);
     }
+
+
+    return { data: [frame] };
   }
 
   async testDatasource() {
