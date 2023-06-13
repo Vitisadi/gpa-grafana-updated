@@ -242,7 +242,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     
     const metadataResponse = await this.metadatasQuery(metadataParameters);
     let metadataParsed = JSON.parse(metadataResponse.data);
-    console.log(metadataParsed)
 
     // Declare frames
     const frame = new MutableDataFrame({

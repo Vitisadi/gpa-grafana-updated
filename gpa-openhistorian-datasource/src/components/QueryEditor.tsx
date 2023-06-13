@@ -205,7 +205,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           <InlineField label="TYPE" labelWidth={12}>
             <Select options={selectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
           </InlineField>
-          {query.queryType === 'Element List' || query.queryType === undefined && renderElements()}
+          {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements() }
           {query.queryType === 'Text Editor' && renderTextBox()}
   
           <InlineField label="Metadata" labelWidth={12}>
