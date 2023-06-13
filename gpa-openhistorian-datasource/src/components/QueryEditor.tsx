@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InlineField, Select, AsyncMultiSelect, TextArea } from '@grafana/ui';
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
@@ -12,10 +12,35 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     { label: 'Text Editor', value: 'Text Editor' },
   ];
 
+  const [loading, setLoading] = useState(true);
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(
     query.queryType ? { label: query.queryType, value: query.queryType } : selectOptions[0]
   );
   const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>();
+
+  //Only runs on page loading - prevents repetitive api calls
+  useEffect(() => {
+    const fetchData = async () => {
+      //Elements List
+      const searchRes = await datasource.searchQuery();
+      query.elementsList = searchRes.data || [];
+      
+      //Metadata Tables
+      const tablesRes = await datasource.tableOptionsQuery();
+      query.tablesList = tablesRes.data || [];
+
+      //Metadata Options
+      const metadataRes = await datasource.metadataOptionsQuery(tablesRes.data);
+      query.metadataList = metadataRes.data || {}
+
+      onChange({ ...query });
+
+      setLoading(false);
+    };
+    fetchData();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSearchChange = (selected: SelectableValue<string>) => {
     // Convert elements between Element List and Text Editor modes
@@ -84,8 +109,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   
 
   const loadElementsOptions = async (inputValue: string) => {
-    const response = await datasource.searchQuery();
-    const asyncOptions = response.data
+    const asyncOptions = query.elementsList
       .filter((element: string) => element.toLowerCase().includes(inputValue.toLowerCase()))
       .map((element: string) => ({
         label: element,
@@ -122,14 +146,14 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   };
 
   const loadTableOptions = async (inputValue: string) => {
-    const tableOptions = await datasource.tableOptionsQuery();
-    const metadataOptions = await datasource.metadataOptionsQuery(tableOptions.data);
+    const tableOptions = query.tablesList
+    const metadataOptions = query.metadataList
   
-    const asyncOptions = tableOptions.data
+    const asyncOptions = tableOptions
       //.filter((table: string) => table.toLowerCase().includes(inputValue.toLowerCase()))
       .map((table: string) => {
         //Generate metadata options
-        const metadataData = metadataOptions.data[table] as string[];
+        const metadataData = metadataOptions[table] as string[];
         const metadataElements = metadataData
           .filter((metadataElement: string) => metadataElement.toLowerCase().includes(inputValue.toLowerCase()))
           .map((metadataElement: string) => {
@@ -174,23 +198,30 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
   return (
     <div className="gf-form" style={{ display: 'flex', flexDirection: 'column' }}>
-      <InlineField label="TYPE" labelWidth={12}>
-        <Select options={selectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
-      </InlineField>
-      {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements()}
-      {query.queryType === 'Text Editor' && renderTextBox()}
-
-      <InlineField label="Metadata" labelWidth={12}>
-        <div>
-          <AsyncMultiSelect
-            loadOptions={loadTableOptions}
-            defaultOptions
-            value={tableOptions}
-            onChange={onTableChange}
-            isSearchable
-          />
-        </div>
-      </InlineField>
+      {loading ? ( // Render a loading indicator while loading is true
+        <div>Loading...</div>
+      ) : (
+        <>
+          <InlineField label="TYPE" labelWidth={12}>
+            <Select options={selectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
+          </InlineField>
+          {query.queryType === 'Element List' || query.queryType === undefined && renderElements()}
+          {query.queryType === 'Text Editor' && renderTextBox()}
+  
+          <InlineField label="Metadata" labelWidth={12}>
+            <div>
+              <AsyncMultiSelect
+                loadOptions={loadTableOptions}
+                defaultOptions
+                value={tableOptions}
+                onChange={onTableChange}
+                isSearchable
+              />
+            </div>
+          </InlineField>
+        </>
+      )}
     </div>
   );
+  
 }
