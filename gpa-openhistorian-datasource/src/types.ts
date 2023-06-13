@@ -4,6 +4,9 @@ export interface MyQuery extends DataQuery {
   elements: string[];
   queryType: string;
   queryText: string;
+  metadataOptions: {
+    [tableName: string]: string[]
+  };
 }
 
 export const DEFAULT_QUERY: Partial<MyQuery> = {
@@ -20,9 +23,9 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
   flags: {
     [key: string]: boolean;
   };
-  metadata: {
-    [tableName: string]: {
-      [columnName: string]: boolean;
-    };
-  };
+  // metadata: {
+  //   [tableName: string]: {
+  //     [columnName: string]: boolean;
+  //   };
+  // };
 }
