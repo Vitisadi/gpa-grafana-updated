@@ -5,7 +5,6 @@ import {
   DataSourceInstanceSettings,
   MutableDataFrame,
   FieldType,
-  QueryResultMeta,
 } from "@grafana/data";
 
 import { MyQuery, MyDataSourceOptions } from "./types";
@@ -13,17 +12,7 @@ import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
 import { DefaultFlags } from "./js/constants";
 
-interface FieldMeta {
-  [key: string]: {
-    [fieldname: string]: string[];
-  };
-}
 
-interface CustomQueryResultMeta extends QueryResultMeta {
-  fields: {
-    [fieldName: string]: FieldMeta;
-  };
-}
 
 interface MetadataTarget {
   target: string;
@@ -35,11 +24,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   flags: {
     [key: string]: boolean;
   };
-  metadata: {
-    [tableName: string]: {
-      [columnName: string]: boolean;
-    };
-  };
 
   constructor(
     instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>
@@ -48,7 +32,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     this.url = instanceSettings.jsonData.http.url || "";
     this.flags = instanceSettings.jsonData.flags || {};
-    this.metadata = instanceSettings.jsonData.metadata || {};
   }
 
   //List of all elements
@@ -80,7 +63,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     });
   }
 
-  // Metadata of specific elements
+  //Metadata of specific elements
   async metadatasQuery(targets: MetadataTarget[]) {
     return await getBackendSrv().datasourceRequest({
       url: this.url + "/getmetadatas",
@@ -89,6 +72,26 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  //Fetches valid tables 
+  async tableOptionsQuery() {
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + "/gettableoptions",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  //Fetches a list of all metadata options from selected tables
+  async metadataOptionsQuery(tables: string[]){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + "/getmetadataoptions",
+      data: { tables },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  
 
   //Generate value of excluded flags
   calculateFlags() {
@@ -160,6 +163,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       queryType: target.queryType ? target.queryType : "Element List",
       elements: target.elements,
       queryText: target.queryText,
+      metadataOptions: target.metadataOptions,
     }));
 
     options.targets = targets;
@@ -172,9 +176,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   ): MetadataTarget[] {
 
     const targets: MetadataTarget[] = [];
-    const tables: string[] = Object.keys(this.metadata);
 
     for (const target of options.targets) {
+      const tables: string[] = Object.keys(target.metadataOptions);
+      
       const elements = this.targetToList(target)
       if (!elements) {
         continue;
@@ -195,19 +200,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const { range } = options;
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
-
-    const selectedMetadataOptions: { [key: string]: string[] } = {};
-
-    Object.entries(this.metadata).forEach(([tableName, columns]) => {
-      const metadataNames = Object.entries(columns)
-        .filter(([columnName, value]) => value === true && columnName !== "Select All")
-        .map(([columnName]) => columnName);
-
-      if (metadataNames.length > 0) {
-        selectedMetadataOptions[tableName] = metadataNames;
-      }
-    });
-
 
     const target = options.targets[0];
     const blankQuery = {
@@ -245,42 +237,30 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       return blankQuery
     }
     
-
-
-
     const metadataResponse = await this.metadatasQuery(metadataParameters);
     let metadataParsed = JSON.parse(metadataResponse.data);
+    console.log(metadataParsed)
 
     // Declare frames
     const frame = new MutableDataFrame({
       refId: target.refId,
       fields: [{ name: "Time", type: FieldType.time }],
-      meta: {
-        fields: {},
-      } as CustomQueryResultMeta, // Use the custom interface
     });
 
-    const metadata = frame.meta as CustomQueryResultMeta;
-    const fieldMetadata = metadata.fields;
-
-    // Add fields & meta data
+    //Add data & metadata fields 
     for (const entry of pointsData["data"]) {
       frame.addField({ name: entry["target"], type: FieldType.number });
 
-      // Initialize metadata for current field
-      fieldMetadata[entry["target"]] = {};
-
-      //Populate selected metadata options
-      for (const tableName in selectedMetadataOptions) {
-        if (!selectedMetadataOptions.hasOwnProperty(tableName)) {
-          continue;
+      //Metadata fields
+      for (const tableName in target.metadataOptions) {
+        if (target.metadataOptions.hasOwnProperty(tableName)) {
+          const metadataOptions = target.metadataOptions[tableName];
+          for (const metadataName of metadataOptions) {
+            const val = metadataParsed[entry["target"]][tableName][0][metadataName]
+            frame.addField({ name: metadataName, values: [val] });
+          }
         }
-        fieldMetadata[entry["target"]][tableName] = {};
-        const metadataOptions = selectedMetadataOptions[tableName];
-        for (const metadataOption of metadataOptions) {
-          fieldMetadata[entry["target"]][tableName][metadataOption] = metadataParsed[entry["target"]][tableName][0][metadataOption];
-        }
-      }        
+      }     
     }
 
     // Intermediate object to group points by timestamp
