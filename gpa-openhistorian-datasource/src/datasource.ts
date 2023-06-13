@@ -181,7 +181,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const targets: MetadataTarget[] = [];
 
     for (const target of options.targets) {
-      const tables: string[] = Object.keys(target.metadataOptions);
+      const tables: string[] = Object.keys(target.metadataOptions || {});
       
       const elements = this.targetToList(target)
       if (!elements) {
