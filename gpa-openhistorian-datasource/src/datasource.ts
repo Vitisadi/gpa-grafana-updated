@@ -127,21 +127,37 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     if (target === undefined || target.elements === undefined) {
       return [];
     }
-
-
+  
     if (!target.queryType || target.queryType === "Element List") {
       return target.elements;
+    } else if (target.queryType === "Text Editor" && target.queryText) {
+      return this.expressionToElements(target.queryText)
+    } else {
+      return [];
     }
-    else if(target.queryType === "Text Editor" && target.queryText){
-      return target.queryText.split(";")
-    }
-
-    else{
-      return []
-    }
-
-    
   }
+
+  expressionToElements(input: string) {
+    // Find the last opening parenthesis
+    const start = input.lastIndexOf("(");
+    const end = input.indexOf(")", start);
+    let targetElements = input;
+
+    // Take text inside ()
+    if (start !== -1 && end !== -1) {
+      targetElements = input.slice(start + 1, end);
+    }
+
+    // Seperate expression from query
+    const splitTargetElements = targetElements.split(",");
+    const lastElement = splitTargetElements[splitTargetElements.length - 1].trim();
+
+    // Seperate elements
+    return lastElement.split(";");
+  }
+  
+
+
 
 
   buildQueryParameters(options: DataQueryRequest<MyQuery>) {
@@ -156,6 +172,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       hide: target.hide,
       excludedFlags: excludedFlags,
       excludeNormalFlags: excludeNormalFlags,
+      //metadataTables: "test tables",
       queryOptions: {
         excludedFlags: excludedFlags,
         excludeNormalFlags: excludeNormalFlags,
@@ -242,6 +259,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     
     const metadataResponse = await this.metadatasQuery(metadataParameters);
     let metadataParsed = JSON.parse(metadataResponse.data);
+    console.log(metadataParsed)
 
     // Declare frames
     const frame = new MutableDataFrame({
@@ -258,7 +276,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         if (target.metadataOptions.hasOwnProperty(tableName)) {
           const metadataOptions = target.metadataOptions[tableName];
           for (const metadataName of metadataOptions) {
-            const val = metadataParsed[entry["target"]][tableName][0][metadataName]
+            console.log(entry["target"])
+            const targetName = this.expressionToElements(entry["target"])[0]
+            console.log(targetName)
+            console.log(metadataParsed[targetName])
+
+            const val = metadataParsed[targetName][tableName][0][metadataName]
             frame.addField({ name: metadataName, values: [val] });
           }
         }
