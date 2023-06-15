@@ -7,6 +7,9 @@ export interface MyQuery extends DataQuery {
   metadataOptions: {
     [tableName: string]: string[]
   };
+  functionValues: {
+    [label: string]: any
+  }
 
   //Holders
   elementsList: string[];

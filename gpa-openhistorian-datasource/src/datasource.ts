@@ -181,6 +181,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       elements: target.elements,
       queryText: target.queryText,
       metadataOptions: target.metadataOptions,
+      functionValues: target.functionValues,
+
       elementsList: target.elementsList,
       tablesList: target.tablesList,
       metadataList: target.metadataList,
