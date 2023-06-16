@@ -1,3 +1,8 @@
+export const SelectOptions = [
+    { label: 'Element List', value: 'Element List' },
+    { label: 'Text Editor', value: 'Text Editor' },
+];
+
 export const DefaultFlags = {
     'Select All': { Value: false, Order: -1, Flag: 0 },
     Normal: { Value: false, Order: 0, Flag: 0  },

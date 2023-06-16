@@ -8,7 +8,7 @@ export interface MyQuery extends DataQuery {
     [tableName: string]: string[]
   };
   functionValues: {
-    [label: string]: any
+    [label: string]: string[]
   }
 
   //Holders

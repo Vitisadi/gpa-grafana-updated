@@ -5,10 +5,15 @@
     border: 1px solid darkgray;
     display: flex;
     align-items: center;
-  }
+}
   
-  .dark-box span {
+.dark-box span {
     margin: 0;
     padding: 2px; 
-  }
+}
+
+.auto-width {
+    width: auto;
+}
+  
   

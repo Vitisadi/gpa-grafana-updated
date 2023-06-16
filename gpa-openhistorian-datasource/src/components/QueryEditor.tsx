@@ -3,21 +3,16 @@ import { InlineFieldRow, InlineField, Select, AsyncMultiSelect, TextArea, MultiS
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery } from '../types';
-import { FunctionList } from '../js/constants'
+import { SelectOptions, FunctionList, Booleans, AngleUnits, TimeUnits } from '../js/constants'
 import "../css/query-editor.css";
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 
 export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
-  const selectOptions = [
-    { label: 'Element List', value: 'Element List' },
-    { label: 'Text Editor', value: 'Text Editor' },
-  ];
-
   const [loading, setLoading] = useState(true);
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(
-    query.queryType ? { label: query.queryType, value: query.queryType } : selectOptions[0]
+    query.queryType ? { label: query.queryType, value: query.queryType } : SelectOptions[0]
   );
   const [functionValue, setFunctionValue] = useState<Array<SelectableValue<string>>>([]);
   const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>();
@@ -38,13 +33,13 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       query.metadataList = metadataRes.data || {}
 
       //Define function values
-      query.functionValues = {}
+      query.functionValues = {};
       Object.entries(FunctionList).forEach(([key, value]) => {
         const label = value.Function;
-        const numParameters = value.Parameters.length;
-  
-        if(numParameters > 0){
-          query.functionValues[label] = FunctionList[label].Parameters[0].Default
+        const parameters = value.Parameters;
+        
+        if (parameters.length > 0) {
+          query.functionValues[label] = parameters.map(param => param.Default);
         }
       });
 
@@ -98,10 +93,41 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     onChange({ ...query, queryText: value });
   };
 
-  const onFunctionChange = (selected: Array<SelectableValue<string>>) => {
+  // Helper function for Function Changes. Sets specified change
+  const changeFunctionValue = (newValue: string, name: string, index: number) => {
+    let newArray = query.functionValues[name]
+    newArray[index] = newValue
+
+    const updatedFunctionValues = {
+      ...query.functionValues,
+      [name]: newArray,
+    };
+    onChange({ ...query, functionValues: updatedFunctionValues });
+  }
+
+  const onFunctionSelectorChange = (selected: Array<SelectableValue<string>>) => {
     setFunctionValue(selected);
-    console.log('Selected function:', selected);
   };
+
+  const onFunctionTextBoxChange = (event: React.ChangeEvent<HTMLInputElement>, name: string, type: string, index: number) => {
+    let newValue = event.target.value;
+    if(type === "int"){
+      const parsedValue = parseInt(event.target.value, 10) 
+      newValue = isNaN(parsedValue) ? FunctionList[name].Parameters[0].Default : parsedValue.toString()
+    }
+    else if(type === "double" || type === "float"){
+      const lastCharacter = event.target.value.slice(-1);
+      const parsedValue = parseFloat(event.target.value)  
+      newValue = isNaN(parsedValue) ? FunctionList[name].Parameters[0].Default : parsedValue.toString()
+      if (lastCharacter === ".") {
+        newValue += "."
+      }
+    }
+
+    changeFunctionValue(newValue, name, index)
+  }
+
+  
 
   const onTableChange = async (selected: Array<SelectableValue<string>>) => {
     setTableOptions(selected);
@@ -165,6 +191,25 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     );
   };
 
+  const renderFunctionDropdownOptions = (type: string) => {
+    // Determine options array based on type
+    let options: string[] = [];
+    if (type === 'boolean') {
+      options = Booleans;
+    } else if (type === 'time') {
+      options = TimeUnits;
+    } else if (type === 'angleUnits') {
+      options = AngleUnits;
+    }
+
+    return options.map((option, index) => (
+      <option key={index} value={option}>
+        {option}
+      </option>
+    ))
+  }
+  
+
   const renderFunctions = () => {
     const sortedFunctionOptions = Object.entries(FunctionList)
       .map(([key, value]) => ({
@@ -181,40 +226,58 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
             <MultiSelect
               options={sortedFunctionOptions}
               value={functionValue}
-              onChange={onFunctionChange}
+              onChange={onFunctionSelectorChange}
               isSearchable
             />
           </InlineField>
           <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
-            {/* <InlineField>      
-              <p style={{ margin: 0 }}>ABC</p>
-            </InlineField>
-            <InlineField>
-              <Select onChange={() => console.log("test")}></Select>
-            </InlineField> */}
+
+            {/* Iterate through selected functions */}
             {functionValue.map((func, index) => {
-              const label = func.label!;
-              const selectedFunction = FunctionList[label];
+              const name = func.label!;
+              const selectedFunction = FunctionList[name];
+
               const hasParameters = selectedFunction && selectedFunction.Parameters && selectedFunction.Parameters.length > 0
+              {/* Generate Function */}
               return (
                 <div key={index}>
-                  <span style={{ margin: 0 }}>{label}</span>
+                  <span style={{ margin: 0 }}>{name}</span>
                   <span>(</span>
-                  {hasParameters && selectedFunction.Parameters[0].Type === 'string' && (
-                    <input
-                      type="text"
-                      value={query.functionValues[label]} 
-                      style={{ width: '30px' }}
-                      onChange={(event) => {
-                        const newValue = event.target.value;
-                        const updatedFunctionValues = {
-                          ...query.functionValues,
-                          [label]: newValue,
-                        };
-                        onChange({ ...query, functionValues: updatedFunctionValues });
-                      }}                      
-                    />
-                  )}
+                  {/* Iterate through Parameters */}
+                  {hasParameters && selectedFunction.Parameters.map((param, paramIndex) => {
+                    const type = param.Type;
+
+                    return (
+                      <React.Fragment key={paramIndex}>
+                        {/* Typing Box */}
+                        {(type === 'string' || type === 'double' || type === 'float' || type === 'int') && (
+                          <input
+                            type="text"
+                            value={query.functionValues[name][paramIndex]}
+                            style={{ width: '50px' }}
+                            onChange={(event) => {
+                              onFunctionTextBoxChange(event, name, type, paramIndex);
+                            }}
+                          />
+                        )}
+
+                        {/* Dropdown */}
+                        {(type === 'boolean' || type === 'time' || type === 'angleUnits') && (
+                          <select
+                            value={query.functionValues[name][paramIndex]}
+                            onChange={(event) => {
+                              changeFunctionValue(event.target.value, name, paramIndex)
+                            }}
+                            className="auto-width"
+                          >
+                            {renderFunctionDropdownOptions(type)}
+                          </select>
+                        )}
+
+                        <span>,</span>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -247,7 +310,6 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     const metadataOptions = query.metadataList
   
     const asyncOptions = tableOptions
-      //.filter((table: string) => table.toLowerCase().includes(inputValue.toLowerCase()))
       .map((table: string) => {
         //Generate metadata options
         const metadataData = metadataOptions[table] as string[];
@@ -284,7 +346,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       ) : (
         <>
           <InlineField label="TYPE" labelWidth={12}>
-            <Select options={selectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
+            <Select options={SelectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
           </InlineField>
           {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements() }
           {(query.queryType === 'Element List' || query.queryType === undefined) && renderFunctions() }
