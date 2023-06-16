@@ -7,6 +7,7 @@ export interface MyQuery extends DataQuery {
   metadataOptions: {
     [tableName: string]: string[]
   };
+  functions: string[];
   functionValues: {
     [label: string]: string[]
   }
@@ -23,6 +24,9 @@ export const DEFAULT_QUERY: Partial<MyQuery> = {
   elements: [],
   queryType: "Element List",
   queryText: "",
+  metadataOptions: {},
+  functions: [],
+  functionValues: {},
 
   //Holders
   elementsList: [],

@@ -50,7 +50,7 @@ export const FunctionList: { [key: string]: { Function: string; Parameters: Arra
     Range: { Function: 'Range', Parameters: [] },
     Count: { Function: 'Count', Parameters: [] },
     Distinct: { Function: 'Distinct', Parameters: [] },
-    AbsoluteValute: { Function: 'AbsoluteValue', Parameters: [] },
+    AbsoluteValue: { Function: 'AbsoluteValue', Parameters: [] },
     Add: { Function: 'Add', Parameters: [{ Default: 0, Type: 'string', Description: 'A floating point value representing an additive offset to be applied to each value the source series.' }] },
     Subtract: { Function: 'Subtract', Parameters: [{ Default: 0, Type: 'string', Description: 'A floating point value representing an additive offset to be applied to each value the source series.' }] },
     Multiply: { Function: 'Multiply', Parameters: [{ Default: 1, Type: 'string', Description: 'A floating point value representing an additive offset to be applied to each value the source series.' }] },

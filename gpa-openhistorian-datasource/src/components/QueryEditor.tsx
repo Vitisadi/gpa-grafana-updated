@@ -14,7 +14,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(
     query.queryType ? { label: query.queryType, value: query.queryType } : SelectOptions[0]
   );
-  const [functionValue, setFunctionValue] = useState<Array<SelectableValue<string>>>([]);
+  // const [functionValue, setFunctionValue] = useState<Array<SelectableValue<string>>>([]);
   const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>();
 
   //Only runs on page loading - prevents repetitive api calls
@@ -31,6 +31,8 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       //Metadata Options
       const metadataRes = await datasource.metadataOptionsQuery(tablesRes.data);
       query.metadataList = metadataRes.data || {}
+
+      query.functions = []
 
       //Define function values
       query.functionValues = {};
@@ -106,7 +108,8 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   }
 
   const onFunctionSelectorChange = (selected: Array<SelectableValue<string>>) => {
-    setFunctionValue(selected);
+    const selectedFunctions = selected.map((item) => item.value) as string[];
+    onChange({ ...query, functions: selectedFunctions });
   };
 
   const onFunctionTextBoxChange = (event: React.ChangeEvent<HTMLInputElement>, name: string, type: string, index: number) => {
@@ -208,33 +211,46 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       </option>
     ))
   }
-  
 
-  const renderFunctions = () => {
+  const renderFunctionSelector = () => {
     const sortedFunctionOptions = Object.entries(FunctionList)
       .map(([key, value]) => ({
         label: key,
         value: value.Function,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
+  
+    return (
+      <InlineField label="Functions" labelWidth={12}>
+        {/* Dropdown Selection */}
+        <MultiSelect
+          options={sortedFunctionOptions}
+          value={query.functions.map((func) => ({
+            label: func,
+            value: func,
+          }))}
+          onChange={onFunctionSelectorChange}
+          isSearchable
+        />
+      </InlineField>
+    );
+  };
+  
+  
+
+  const renderFunctions = () => {
+    if(query.functions.length === 0){
+      return renderFunctionSelector()
+    }
 
     return (
       <div>
         <InlineFieldRow>
-          <InlineField label="Functions" labelWidth={12}>
-            {/* Dropdown Selection */}
-            <MultiSelect
-              options={sortedFunctionOptions}
-              value={functionValue}
-              onChange={onFunctionSelectorChange}
-              isSearchable
-            />
-          </InlineField>
+          {renderFunctionSelector()}
           <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
 
             {/* Iterate through selected functions */}
-            {functionValue.map((func, index) => {
-              const name = func.label!;
+            {query.functions.map((name, index) => {
               const selectedFunction = FunctionList[name];
 
               const hasParameters = selectedFunction && selectedFunction.Parameters && selectedFunction.Parameters.length > 0
@@ -254,9 +270,13 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                           <input
                             type="text"
                             value={query.functionValues[name][paramIndex]}
-                            style={{ width: '50px' }}
+                            style={{ width: `${query.functionValues[name].length * 20}px` }}
                             onChange={(event) => {
                               onFunctionTextBoxChange(event, name, type, paramIndex);
+                            }}
+                            onInput={(event) => {
+                              const target = event.target as HTMLInputElement;
+                              target.style.width = `${target.value.length * 10}px`;
                             }}
                           />
                         )}
@@ -282,7 +302,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
               );
             })}
             <span style={{ color: 'rgb(93, 114, 176)' }}>QUERY</span>
-            {functionValue.length > 0 && <span>{')'.repeat(functionValue.length)}</span>}
+            {query.functions.length > 0 && <span>{')'.repeat(query.functions.length)}</span>}
           </div>
         </InlineFieldRow>
       </div>

@@ -10,7 +10,7 @@ import {
 import { MyQuery, MyDataSourceOptions } from "./types";
 import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
-import { DefaultFlags } from "./js/constants";
+import { DefaultFlags, FunctionList } from "./js/constants";
 
 
 
@@ -112,7 +112,25 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
 
     if (!target.queryType || target.queryType === "Element List") {
-      return target.elements.join(";");
+      //No Functions Selected
+      if(target.functions.length === 0){
+        return target.elements.join(";") 
+      }
+
+      //Build Functions
+      let buildingQuery = ""
+      target.functions.map((name, index)=>{
+        buildingQuery += name + "("
+        FunctionList[name].Parameters.map((parameter, index) => {
+          buildingQuery += target.functionValues[name][index] + ","
+        })
+      })
+      //Main Query
+      buildingQuery += target.elements.join(";") 
+      
+      buildingQuery += ")".repeat(target.functions.length);
+      
+      return buildingQuery
     }
     else if(target.queryType === "Text Editor"){
       return target.queryText
@@ -181,6 +199,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       elements: target.elements,
       queryText: target.queryText,
       metadataOptions: target.metadataOptions,
+      functions: target.functions,
       functionValues: target.functionValues,
 
       elementsList: target.elementsList,
