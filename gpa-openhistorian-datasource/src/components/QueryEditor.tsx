@@ -3,7 +3,7 @@ import { InlineFieldRow, InlineField, Select, AsyncMultiSelect, TextArea, MultiS
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery } from '../types';
-import { SelectOptions, FunctionList, Booleans, AngleUnits, TimeUnits } from '../js/constants'
+import { SelectOptions, Booleans, AngleUnits, TimeUnits } from '../js/constants'
 import "../css/query-editor.css";
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
@@ -20,6 +20,16 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   //Only runs on page loading - prevents repetitive api calls
   useEffect(() => {
     const fetchData = async () => {
+      //Variables
+      query.elements = []
+      query.queryType = "Element List"
+      query.queryText = ""
+      query.metadataOptions = {}
+      query.functions = []
+      query.functionValues= {}
+      query.elementsList = []
+      query.tablesList = []
+
       //Elements List
       const searchRes = await datasource.searchQuery();
       query.elementsList = searchRes.data || [];
@@ -32,16 +42,23 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       const metadataRes = await datasource.metadataOptionsQuery(tablesRes.data);
       query.metadataList = metadataRes.data || {}
 
-      query.functions = []
+      //Define function list
+      const functionRes = await datasource.functionOptionsQuery()
+      query.functionList = {};
+
+      Object.entries(functionRes.data).forEach(([key, value]: [string, any]) => {
+        const name: string = value.Name;
+        query.functionList[name] = value;
+      });
 
       //Define function values
       query.functionValues = {};
-      Object.entries(FunctionList).forEach(([key, value]) => {
-        const label = value.Function;
+      Object.entries(query.functionList).forEach(([key, value]: [string, any]) => {
+        const label: string = value.Name;
         const parameters = value.Parameters;
         
         if (parameters.length > 0) {
-          query.functionValues[label] = parameters.map(param => param.Default);
+          query.functionValues[label] = parameters.map((param: any) => param.Default);
         }
       });
 
@@ -116,12 +133,12 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     let newValue = event.target.value;
     if(type === "int"){
       const parsedValue = parseInt(event.target.value, 10) 
-      newValue = isNaN(parsedValue) ? FunctionList[name].Parameters[0].Default : parsedValue.toString()
+      newValue = isNaN(parsedValue) ? query.functionList[name].Parameters[0].Default : parsedValue.toString()
     }
-    else if(type === "double" || type === "float"){
+    else if(type === "double" || type === "float" || type === "decimal"){
       const lastCharacter = event.target.value.slice(-1);
       const parsedValue = parseFloat(event.target.value)  
-      newValue = isNaN(parsedValue) ? FunctionList[name].Parameters[0].Default : parsedValue.toString()
+      newValue = isNaN(parsedValue) ? query.functionList[name].Parameters[0].Default : parsedValue.toString()
       if (lastCharacter === ".") {
         newValue += "."
       }
@@ -213,10 +230,10 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   }
 
   const renderFunctionSelector = () => {
-    const sortedFunctionOptions = Object.entries(FunctionList)
+    const sortedFunctionOptions = Object.entries(query.functionList)
       .map(([key, value]) => ({
         label: key,
-        value: value.Function,
+        value: key,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
   
@@ -251,7 +268,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
             {/* Iterate through selected functions */}
             {query.functions.map((name, index) => {
-              const selectedFunction = FunctionList[name];
+              const selectedFunction = query.functionList[name];
 
               const hasParameters = selectedFunction && selectedFunction.Parameters && selectedFunction.Parameters.length > 0
               {/* Generate Function */}
@@ -261,12 +278,12 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                   <span>(</span>
                   {/* Iterate through Parameters */}
                   {hasParameters && selectedFunction.Parameters.map((param, paramIndex) => {
-                    const type = param.Type;
+                    const type = param.ParameterTypeName;
 
                     return (
                       <React.Fragment key={paramIndex}>
                         {/* Typing Box */}
-                        {(type === 'string' || type === 'double' || type === 'float' || type === 'int') && (
+                        {(type === 'string' || type === 'double' || type === 'float' || type === "decimal" || type === 'int') && (
                           <input
                             type="text"
                             value={query.functionValues[name][paramIndex]}
@@ -294,7 +311,9 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                           </select>
                         )}
 
-                        <span>,</span>
+                        {type !== 'data' && (
+                          <span>,</span>
+                        )}
                       </React.Fragment>
                     );
                   })}

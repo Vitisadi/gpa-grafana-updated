@@ -10,7 +10,7 @@ import {
 import { MyQuery, MyDataSourceOptions } from "./types";
 import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
-import { DefaultFlags, FunctionList } from "./js/constants";
+import { DefaultFlags } from "./js/constants";
 
 
 
@@ -91,6 +91,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  //Fetches a list of all metadata options from selected tables
+  async functionOptionsQuery(){
+    return await getBackendSrv().datasourceRequest({
+      url: this.url + "/getfunctions",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   
 
   //Generate value of excluded flags
@@ -121,13 +130,16 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       let buildingQuery = ""
       target.functions.map((name, index)=>{
         buildingQuery += name + "("
-        FunctionList[name].Parameters.map((parameter, index) => {
+        target.functionList[name].Parameters.map((parameter, index) => {
+          if (parameter.ParameterTypeName === "data") {
+            return;
+          }
           buildingQuery += target.functionValues[name][index] + ","
         })
       })
       //Main Query
       buildingQuery += target.elements.join(";") 
-      
+
       buildingQuery += ")".repeat(target.functions.length);
       
       return buildingQuery
@@ -205,6 +217,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       elementsList: target.elementsList,
       tablesList: target.tablesList,
       metadataList: target.metadataList,
+      functionList: target.functionList,
     }));
 
     options.targets = targets;
@@ -297,11 +310,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         if (target.metadataOptions.hasOwnProperty(tableName)) {
           const metadataOptions = target.metadataOptions[tableName];
           for (const metadataName of metadataOptions) {
-            console.log(entry["target"])
             const targetName = this.expressionToElements(entry["target"])[0]
-            console.log(targetName)
-            console.log(metadataParsed[targetName])
-
             const val = metadataParsed[targetName][tableName][0][metadataName]
             frame.addField({ name: metadataName, values: [val] });
           }

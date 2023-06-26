@@ -18,6 +18,25 @@ export interface MyQuery extends DataQuery {
   metadataList: {
     [tableName: string]: string[]
   }
+
+  functionList: {
+    [name: string]: {
+      Description: string;
+      Name: string;
+      Parameters: {
+        Default: any;
+        Description: string;
+        ParameterType: string;
+        ParameterTypeName: string;
+        Required: boolean;
+      }[];
+      Regex: {
+        Pattern: string;
+        Options: number;
+      };
+      Type: string;
+    };
+  };
 }
 
 export const DEFAULT_QUERY: Partial<MyQuery> = {
