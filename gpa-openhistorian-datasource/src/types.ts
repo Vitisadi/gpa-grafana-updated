@@ -1,5 +1,6 @@
-import { DataQuery, DataSourceJsonData, DataSourceSettings } from '@grafana/data';
+import { DataQuery, DataSourceJsonData, DataSourceSettings, TimeRange, RawTimeRange } from '@grafana/data';
 
+// Query
 export interface MyQuery extends DataQuery {
   elements: string[];
   queryType: string;
@@ -52,17 +53,46 @@ export const DEFAULT_QUERY: Partial<MyQuery> = {
   tablesList: [],
 };
 
-/**
- * These are options configured for each DataSource instance
- */
+// Config
 export interface MyDataSourceOptions extends DataSourceJsonData {
   http: DataSourceSettings<any, any>;
   flags: {
     [key: string]: boolean;
   };
-  // metadata: {
-  //   [tableName: string]: {
-  //     [columnName: string]: boolean;
-  //   };
-  // };
+}
+
+
+/* Custom Interfaces below */
+export interface MetadataTarget {
+  target: string;
+  tables: string[];
+}
+
+
+export interface QueryRequest {
+  panelId: number;
+  dashboardId: number;
+  range: TimeRange;
+  rangeRaw: RawTimeRange;
+  interval: string;
+  intervalMs: number;
+  format: string;
+  maxDataPoints: number;
+  targets: Target[];
+  adhocFilters: AdHocFilter[];
+}
+
+export interface Target {
+  refId: string;
+  target: string;
+  type: string;
+  metadataSelection: MyQuery["metadataList"];
+  excludedFlags: number;
+  excludeNormalFlags: boolean;
+}
+
+export interface AdHocFilter {
+  key: string;
+  operator: string;
+  value: string;
 }

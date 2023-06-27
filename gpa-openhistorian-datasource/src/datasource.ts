@@ -7,17 +7,11 @@ import {
   FieldType,
 } from "@grafana/data";
 
-import { MyQuery, MyDataSourceOptions } from "./types";
+import { MyQuery, MyDataSourceOptions, MetadataTarget, QueryRequest, Target } from "./types";
 import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
 import { DefaultFlags } from "./js/constants";
 
-
-
-interface MetadataTarget {
-  target: string;
-  tables: string[];
-}
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url: string;
@@ -44,7 +38,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   //Information on specific elements
-  async dataQuery(query: DataQueryRequest<MyQuery>) {
+  async dataQuery(query: QueryRequest) {
     return await getBackendSrv().datasourceRequest({
       url: this.url + "/query",
       data: query,
@@ -190,39 +184,31 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
 
 
-  buildQueryParameters(options: DataQueryRequest<MyQuery>) {
+  buildQueryParameters(options: DataQueryRequest<MyQuery>): QueryRequest {
     const excludedFlags = this.calculateFlags();
-    const excludeNormalFlags = this.flags["Normal"]
-      ? this.flags["Normal"]
-      : false;
-
-    const targets = options.targets.map((target) => ({
-      target: this.targetToString(target),
+    const excludeNormalFlags = this.flags["Normal"] ?? false;
+  
+    const targets: Target[] = options.targets.map((target) => ({
       refId: target.refId,
-      hide: target.hide,
+      target: this.targetToString(target),
+      type: target.queryType ?? "Element List",
+      metadataSelection: target.metadataOptions,
       excludedFlags: excludedFlags,
       excludeNormalFlags: excludeNormalFlags,
-      //metadataTables: "test tables",
-      queryOptions: {
-        excludedFlags: excludedFlags,
-        excludeNormalFlags: excludeNormalFlags,
-      },
-      queryType: target.queryType ? target.queryType : "Element List",
-      elements: target.elements,
-      queryText: target.queryText,
-      metadataOptions: target.metadataOptions,
-      functions: target.functions,
-      functionValues: target.functionValues,
-
-      elementsList: target.elementsList,
-      tablesList: target.tablesList,
-      metadataList: target.metadataList,
-      functionList: target.functionList,
     }));
-
-    options.targets = targets;
-
-    return options;
+  
+    return {
+      panelId: options.panelId ??  0,
+      dashboardId: options.dashboardId ?? 0,
+      range: options.range!,
+      rangeRaw: options.rangeRaw!,
+      interval: options.interval ?? "",
+      intervalMs: options.intervalMs ?? 0,
+      format: "json",
+      maxDataPoints: options.maxDataPoints ?? 0,
+      targets: targets,
+      adhocFilters: [], // Check what this is 
+    };
   }
 
   buildMetadataParameters(
@@ -272,12 +258,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
 
     //Generate query
-    let query = this.buildQueryParameters(options);
-
-    // Remove all hidden elements
-    query.targets = query.targets.filter(function (t) {
-      return !t.hide;
-    });
+    let query: QueryRequest = this.buildQueryParameters(options);
 
     // Get Data
     let pointsData
