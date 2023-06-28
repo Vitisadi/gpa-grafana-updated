@@ -47,26 +47,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     });
   }
 
-  //Metadata of specific elements
-  async metadataQuery(target: MetadataTarget) {
-    return await getBackendSrv().datasourceRequest({
-      url: this.url + "/getmetadata",
-      data: target,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  //Metadata of specific elements
-  async metadatasQuery(targets: MetadataTarget[]) {
-    return await getBackendSrv().datasourceRequest({
-      url: this.url + "/getmetadatas",
-      data: targets,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   //Fetches valid tables 
   async tableOptionsQuery() {
     return await getBackendSrv().datasourceRequest({
@@ -262,19 +242,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     // Get Data
     let pointsData
-    let metadataParameters
     try{
       pointsData = await this.dataQuery(query);
-      metadataParameters = this.buildMetadataParameters(options);
     }
     catch(error) {
       console.log(error)
       return blankQuery
     }
-    
-    const metadataResponse = await this.metadatasQuery(metadataParameters);
-    let metadataParsed = JSON.parse(metadataResponse.data);
-    console.log(metadataParsed)
 
     // Declare frames
     const frame = new MutableDataFrame({
@@ -286,23 +260,18 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     for (const entry of pointsData["data"]) {
       frame.addField({ name: entry["target"], type: FieldType.number });
 
-      //Metadata fields
-      for (const tableName in target.metadataOptions) {
-        if (target.metadataOptions.hasOwnProperty(tableName)) {
-          const metadataOptions = target.metadataOptions[tableName];
-          for (const metadataName of metadataOptions) {
-            const targetName = this.expressionToElements(entry["target"])[0]
-            const val = metadataParsed[targetName][tableName][0][metadataName]
-            frame.addField({ name: metadataName, values: [val] });
-          }
-        }
-      }     
+      const meta = entry["meta"];
+      for (const key in meta) {
+        frame.addField({ name: key });
+      }    
     }
 
     // Intermediate object to group points by timestamp
-    const groupedPoints: {
+    let groupedPoints: {
       [timestamp: number]: { [target: string]: number };
     } = groupPoints(pointsData);
+
+    groupedPoints = addMetadata(groupedPoints, pointsData)
 
     // Iterate through grouped points and add them to the frame
     for (const timestamp in groupedPoints) {
@@ -358,4 +327,18 @@ function groupPoints(pointsData: { [key: string]: any }) {
     }
   }
   return groupedPoints;
+}
+
+function addMetadata(groupedPoints: { [timestamp: number]: { [target: string]: number } }, pointsData: { [key: string]: any }) {
+  // Add metadata to all timestamps
+  for (const timestamp in groupedPoints) {
+    for(const entry of pointsData["data"]){
+      const meta = entry["meta"];
+      for (const key in meta) {
+        groupedPoints[timestamp][key] = meta[key]
+      }
+    }
+  }
+
+  return groupedPoints
 }
