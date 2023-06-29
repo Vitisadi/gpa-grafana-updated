@@ -67,6 +67,18 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({ ...options, jsonData });
   };
 
+  const onPhasorChange = (event: React.FormEvent<HTMLInputElement>) => {
+    const input = event.target as HTMLInputElement;
+    const { checked } = input;
+
+    const jsonData = {
+      ...options.jsonData,
+      phasor: checked,
+    };
+
+    onOptionsChange({ ...options, jsonData });
+  };
+
 
   return (
     <div className="gf-form-group">
@@ -101,6 +113,21 @@ export function ConfigEditor(props: Props) {
           </InlineField>
         ))}
       </InlineFieldRow>
+
+      <br></br>
+
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <h4>Phasor</h4>
+        <div className="dark-box">
+          <Switch
+            name="phasor"
+            disabled={false}
+            value={jsonData.phasor ?? false}
+            onChange={onPhasorChange}
+          />
+        </div>
+      </div>
+      
     </div>
   );
 }

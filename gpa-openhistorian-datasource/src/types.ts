@@ -59,6 +59,7 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
   flags: {
     [key: string]: boolean;
   };
+  phasor: boolean
 }
 
 
