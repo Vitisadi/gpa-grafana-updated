@@ -262,7 +262,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       const meta = entry["meta"];
       for (const key in meta) {
-        frame.addField({ name: key });
+        frame.addField({ name: key + "/" + entry["target"] });
       }    
     }
 
@@ -335,7 +335,7 @@ function addMetadata(groupedPoints: { [timestamp: number]: { [target: string]: n
     for(const entry of pointsData["data"]){
       const meta = entry["meta"];
       for (const key in meta) {
-        groupedPoints[timestamp][key] = meta[key]
+        groupedPoints[timestamp][key + "/" + entry["target"]] = meta[key]
       }
     }
   }
