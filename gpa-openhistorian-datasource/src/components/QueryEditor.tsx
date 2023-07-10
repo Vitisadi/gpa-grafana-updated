@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { InlineFieldRow, InlineField, Select, AsyncMultiSelect, TextArea, MultiSelect } from '@grafana/ui';
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
-import { MyDataSourceOptions, MyQuery } from '../types';
+import { MyDataSourceOptions, MyQuery, FunctionParameter, FunctionData } from '../types';
 import { SelectOptions, Booleans, AngleUnits, TimeUnits } from '../js/constants'
 import "../css/query-editor.css";
 
@@ -33,7 +33,8 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       //Elements List
       const searchRes = await datasource.searchQuery();
       query.elementsList = searchRes.data || [];
-      
+      query.elementsList.sort();
+
       //Metadata Tables
       const tablesRes = await datasource.tableOptionsQuery();
       query.tablesList = tablesRes.data || [];
@@ -70,6 +71,36 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const generateFunctionData = (selectedFunctions: string[], functionIndex: number): FunctionData => {
+    const functionName = selectedFunctions[functionIndex];
+    const functionInfo = query.functionList[functionName];
+    let params: FunctionParameter[] = []
+
+    functionInfo.Parameters.forEach((parameter) => {
+      if(parameter.ParameterTypeName === "data" && (functionIndex + 1) < selectedFunctions.length){
+        params.push({
+          Value: "",
+          Type: parameter.ParameterTypeName,
+          Sub: generateFunctionData(selectedFunctions, (functionIndex + 1))
+        })
+      }
+      else{
+        params.push({
+          Value: parameter.Default, 
+          Type: parameter.ParameterTypeName,
+          Sub: undefined,
+        })
+      }
+    })
+
+    let functionData: FunctionData = {
+      Name: functionName,
+      Parameters: params,
+    }
+
+    return functionData
+  }
 
   const onSearchChange = (selected: SelectableValue<string>) => {
     // Convert elements between Element List and Text Editor modes
@@ -112,24 +143,41 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     onChange({ ...query, queryText: value });
   };
 
-  // Helper function for Function Changes. Sets specified change
-  const changeFunctionValue = (newValue: string, name: string, index: number) => {
-    let newArray = query.functionValues[name]
-    newArray[index] = newValue
+  const updateFunctionData = (newValue: string, parameterPathIndex: number[]) => {
+    let currentData = query.functionsData.Parameters[parameterPathIndex[0]];
 
-    const updatedFunctionValues = {
-      ...query.functionValues,
-      [name]: newArray,
-    };
-    onChange({ ...query, functionValues: updatedFunctionValues });
-  }
+    for (let i = 1; i < parameterPathIndex.length; i++) {
+      const index = parameterPathIndex[i];
+      currentData = currentData.Sub!.Parameters[index];
+    }
+
+    currentData.Value = newValue;
+  
+    // Update the query object with the modified functionsData
+    onChange({ ...query, functionsData: query.functionsData });
+  };
 
   const onFunctionSelectorChange = (selected: Array<SelectableValue<string>>) => {
     const selectedFunctions = selected.map((item) => item.value) as string[];
     onChange({ ...query, functions: selectedFunctions });
+
+    // Build function structure
+    let data: FunctionData; 
+    if(selectedFunctions.length === 0){
+      data = {
+        Name: "",
+        Parameters: [],
+      };
+    }
+    else {
+      data = generateFunctionData(selectedFunctions, 0);
+    }
+
+    console.log("Updating")
+    onChange({ ...query, functions: selectedFunctions, functionsData: data });
   };
 
-  const onFunctionTextBoxChange = (event: React.ChangeEvent<HTMLInputElement>, name: string, type: string, index: number) => {
+  const validateTextBoxChange = (event: React.ChangeEvent<HTMLInputElement>, name: string, type: string, index: number) => {
     let newValue = event.target.value;
     if(type === "int"){
       const parsedValue = parseInt(event.target.value, 10) 
@@ -144,7 +192,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       }
     }
 
-    changeFunctionValue(newValue, name, index)
+    return newValue
   }
 
   
@@ -221,6 +269,9 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     } else if (type === 'angleUnits') {
       options = AngleUnits;
     }
+    else if (type === 'data') {
+      options = query.elementsList ?? [];
+    }
 
     return options.map((option, index) => (
       <option key={index} value={option}>
@@ -253,78 +304,105 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     );
   };
   
-  
-
   const renderFunctions = () => {
-    if(query.functions.length === 0){
-      return renderFunctionSelector()
+    if (query.functions.length === 0) {
+      return renderFunctionSelector();
     }
-
+  
     return (
       <div>
         <InlineFieldRow>
           {renderFunctionSelector()}
           <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
-
-            {/* Iterate through selected functions */}
-            {query.functions.map((name, index) => {
-              const selectedFunction = query.functionList[name];
-
-              const hasParameters = selectedFunction && selectedFunction.Parameters && selectedFunction.Parameters.length > 0
-              {/* Generate Function */}
-              return (
-                <div key={index}>
-                  <span style={{ margin: 0 }}>{name}</span>
-                  <span>(</span>
-                  {/* Iterate through Parameters */}
-                  {hasParameters && selectedFunction.Parameters.map((param, paramIndex) => {
-                    const type = param.ParameterTypeName;
-
-                    return (
-                      <React.Fragment key={paramIndex}>
-                        {/* Typing Box */}
-                        {(type === 'string' || type === 'double' || type === 'float' || type === "decimal" || type === 'int') && (
-                          <input
-                            type="text"
-                            value={query.functionValues[name][paramIndex]}
-                            style={{ width: `${query.functionValues[name].length * 20}px` }}
-                            onChange={(event) => {
-                              onFunctionTextBoxChange(event, name, type, paramIndex);
-                            }}
-                            onInput={(event) => {
-                              const target = event.target as HTMLInputElement;
-                              target.style.width = `${target.value.length * 10}px`;
-                            }}
-                          />
-                        )}
-
-                        {/* Dropdown */}
-                        {(type === 'boolean' || type === 'time' || type === 'angleUnits') && (
-                          <select
-                            value={query.functionValues[name][paramIndex]}
-                            onChange={(event) => {
-                              changeFunctionValue(event.target.value, name, paramIndex)
-                            }}
-                            className="auto-width"
-                          >
-                            {renderFunctionDropdownOptions(type)}
-                          </select>
-                        )}
-
-                        {type !== 'data' && (
-                          <span>,</span>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              );
-            })}
-            <span style={{ color: 'rgb(93, 114, 176)' }}>QUERY</span>
-            {query.functions.length > 0 && <span>{')'.repeat(query.functions.length)}</span>}
+            {query.functionsData.Name !== "" && renderFunctionDisplay(query.functionsData, [])} 
           </div>
         </InlineFieldRow>
       </div>
+    );
+
+   
+  };
+
+  const renderFunctionDisplay = (functionData: FunctionData, parameterPathIndex: number[]): JSX.Element => {
+    const sortedElementOptions = Object.entries(query.elementsList)
+      .map(([key, value]) => ({
+        label: value,
+        value: value,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const functionName = functionData.Name;
+    return (
+      <>
+        <span style={{ margin: 0 }}>{functionName}</span>
+        <span>(</span>
+        {functionData.Parameters.map((param, paramIndex) => {
+          const type = param.Type;
+          const isLastParam = paramIndex === functionData.Parameters.length - 1;
+          const newParameterPathIndex = [...parameterPathIndex, paramIndex];
+          // No sub functions
+          if (param.Sub === undefined) {
+            return (
+              <React.Fragment key={paramIndex}>
+                {/* Typing Box */}
+                {type === 'string' || type === 'double' || type === 'float' || type === 'decimal' || type === 'int' ? (
+                  <input
+                    type="text"
+                    value={param.Value}
+                    style={{ width: `${param.Value.length * 20}px` }}
+                    onChange={(event) => {
+                      const newValue = validateTextBoxChange(event, functionName, type, paramIndex);
+                      updateFunctionData(newValue, newParameterPathIndex);
+                    }}
+                    onInput={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      target.style.width = `${target.value.length * 10}px`;
+                    }}
+                  />
+                ) : null}
+  
+                {/* Dropdown */}
+                {type === 'boolean' || type === 'time' || type === 'angleUnits' ? (
+                  <select
+                    value={param.Value}
+                    onChange={(event) => {
+                      updateFunctionData(event.target.value, newParameterPathIndex);
+                    }}
+                    className="auto-width"
+                  >
+                    {renderFunctionDropdownOptions(type)}
+                  </select>
+                ) : null}
+  
+                {/* Data */}
+                {type === 'data' ? (
+                  <MultiSelect
+                    options={sortedElementOptions}
+                    value={param.Value && typeof param.Value === 'string' ? param.Value.split(";").map((value) => ({ label: value, value })) : []}
+                    onChange={(selectedOptions) => {
+                      const selectedValues = selectedOptions.map((option) => option.value);
+                      updateFunctionData(selectedValues.join(";"), newParameterPathIndex);
+                    }}
+                    className="auto-width"
+                    isSearchable
+                  />
+                ) : null}
+  
+                {!isLastParam && <span>,</span>}
+              </React.Fragment>
+            );
+          }
+  
+          // Have sub functions
+          return (
+            <>
+              {renderFunctionDisplay(param.Sub, newParameterPathIndex)}
+              {!isLastParam && <span>,</span>}
+            </>
+          );
+        })}
+        <span>)</span>
+      </>
     );
   };
   
