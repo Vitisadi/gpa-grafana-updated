@@ -9,9 +9,7 @@ export interface MyQuery extends DataQuery {
     [tableName: string]: string[]
   };
   functions: string[];
-  functionValues: {
-    [label: string]: string[]
-  }
+  functionsData: FunctionData;
 
   //Holders
   elementsList: string[];
@@ -46,7 +44,6 @@ export const DEFAULT_QUERY: Partial<MyQuery> = {
   queryText: "",
   metadataOptions: {},
   functions: [],
-  functionValues: {},
 
   //Holders
   elementsList: [],
@@ -64,6 +61,17 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
 
 
 /* Custom Interfaces below */
+export interface FunctionParameter {
+  Value: string;
+  Type: string;
+  Sub?: FunctionData;
+}
+
+export interface FunctionData {
+  Name: string;
+  Parameters: FunctionParameter[];
+}
+
 export interface MetadataTarget {
   target: string;
   tables: string[];
