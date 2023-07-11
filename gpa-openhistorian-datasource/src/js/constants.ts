@@ -1,5 +1,6 @@
 export const SelectOptions = [
     { label: 'Element List', value: 'Element List' },
+    { label: 'Functions', value: 'Functions' },
     { label: 'Text Editor', value: 'Text Editor' },
 ];
 
