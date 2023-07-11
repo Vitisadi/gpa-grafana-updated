@@ -7,7 +7,7 @@ import {
   FieldType,
 } from "@grafana/data";
 
-import { MyQuery, MyDataSourceOptions, MetadataTarget, QueryRequest, Target } from "./types";
+import { MyQuery, MyDataSourceOptions, MetadataTarget, QueryRequest, Target, FunctionData } from "./types";
 import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
 import { DefaultFlags } from "./js/constants";
@@ -89,34 +89,43 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return excludedValue;
   }
 
+  generateExpressionFromFunction(functionsData: FunctionData): string{
+    if(functionsData.Name === ""){
+      return ""
+    }
+
+    let expression = functionsData.Name + "(";
+    functionsData.Parameters.map((parameter, index) => {
+      // No nested function
+      if(parameter.Sub === undefined){
+        expression += parameter.Value;
+      }
+
+      // Nested Function
+      else {
+        expression += this.generateExpressionFromFunction(parameter.Sub)
+      }
+
+      // Add "," if not last element
+      if (index < functionsData.Parameters.length - 1) {
+        expression += ",";
+      }
+    })
+    expression += ")"
+    return expression 
+  }
+
   targetToString(target: MyQuery) {
     if (target === undefined || target.elements === undefined) {
       return "";
     }
 
     if (!target.queryType || target.queryType === "Element List") {
-      //No Functions Selected
-      if(target.functions.length === 0){
-        return target.elements.join(";") 
-      }
-
-      //Build Functions
-      let buildingQuery = ""
-      target.functions.map((name, index)=>{
-        buildingQuery += name + "("
-        target.functionList[name].Parameters.map((parameter, index) => {
-          if (parameter.ParameterTypeName === "data") {
-            return;
-          }
-          buildingQuery += target.functionValues[name][index] + ","
-        })
-      })
-      //Main Query
-      buildingQuery += target.elements.join(";") 
-
-      buildingQuery += ")".repeat(target.functions.length);
-      
-      return buildingQuery
+      return target.elements.join(";") 
+    }
+    else if (target.queryType === "Functions"){
+      let a = this.generateExpressionFromFunction(target.functionsData)
+      return a;
     }
     else if(target.queryType === "Text Editor"){
       return target.queryText

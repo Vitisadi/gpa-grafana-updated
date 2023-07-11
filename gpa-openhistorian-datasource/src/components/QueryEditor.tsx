@@ -26,7 +26,10 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       query.queryText = ""
       query.metadataOptions = {}
       query.functions = []
-      query.functionValues= {}
+      query.functionsData = {
+        Name: "",
+        Parameters: []
+      }      
       query.elementsList = []
       query.tablesList = []
 
@@ -50,18 +53,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       Object.entries(functionRes.data).forEach(([key, value]: [string, any]) => {
         const name: string = value.Name;
         query.functionList[name] = value;
-      });
-
-      //Define function values
-      query.functionValues = {};
-      Object.entries(query.functionList).forEach(([key, value]: [string, any]) => {
-        const label: string = value.Name;
-        const parameters = value.Parameters;
-        
-        if (parameters.length > 0) {
-          query.functionValues[label] = parameters.map((param: any) => param.Default);
-        }
-      });
+      }); 
 
       onChange({ ...query });
 
@@ -103,25 +95,30 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   }
 
   const onSearchChange = (selected: SelectableValue<string>) => {
-    // Convert elements between Element List and Text Editor modes
-    if (
-      (query.queryType === 'Element List' || query.queryType === undefined) &&
-      selected.value === 'Text Editor'
-    ) {
-      // Convert elements to queryText
+    // Convert between different modes
+    if (selected.value === 'Text Editor') {
+      //Convert
       query.queryText = datasource.targetToString(query);
 
-      // Remove elements
+      //Remove
       query.elements = [];
-    } else if (query.queryType === 'Text Editor' && selected.value === 'Element List') {
-      if (query.queryText && query.queryText.trim() !== '') {
-        // Convert queryText to elements
-        const elements = datasource.targetToList(query);
-        query.elements = elements;
+      query.functions = [];
+      query.functionsData = {
+        Name: "",
+        Parameters: []
       }
-
-      // Remove queryText
+    } else if (selected.value === 'Element List') {
+      //Remove 
       query.queryText = '';
+      query.functions = [];
+      query.functionsData = {
+        Name: "",
+        Parameters: []
+      }
+    } else if (selected.value === 'Functions') {
+      //Remove
+      query.queryText = '';
+      query.elements = [];
     }
 
     setTypeValue(selected);
@@ -173,7 +170,6 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       data = generateFunctionData(selectedFunctions, 0);
     }
 
-    console.log("Updating")
     onChange({ ...query, functions: selectedFunctions, functionsData: data });
   };
 
@@ -349,14 +345,14 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                   <input
                     type="text"
                     value={param.Value}
-                    style={{ width: `${param.Value.length * 20}px` }}
+                    style={{ width: `${param.Value.length * 8.5}px` }}
                     onChange={(event) => {
                       const newValue = validateTextBoxChange(event, functionName, type, paramIndex);
                       updateFunctionData(newValue, newParameterPathIndex);
                     }}
                     onInput={(event) => {
                       const target = event.target as HTMLInputElement;
-                      target.style.width = `${target.value.length * 10}px`;
+                      target.style.width = `${target.value.length * 8.5}px`;
                     }}
                   />
                 ) : null}
@@ -466,7 +462,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
             <Select options={SelectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
           </InlineField>
           {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements() }
-          {(query.queryType === 'Element List' || query.queryType === undefined) && renderFunctions() }
+          {(query.queryType === 'Functions' || query.queryType === undefined) && renderFunctions() }
           {query.queryType === 'Text Editor' && renderTextBox()}
   
           <InlineField label="Metadata" labelWidth={12}>
