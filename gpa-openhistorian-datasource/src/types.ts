@@ -89,6 +89,7 @@ export interface QueryRequest {
   maxDataPoints: number;
   targets: Target[];
   adhocFilters: AdHocFilter[];
+  isPhasor: boolean;
 }
 
 export interface Target {

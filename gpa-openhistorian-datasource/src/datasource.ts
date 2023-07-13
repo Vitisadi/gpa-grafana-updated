@@ -18,6 +18,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   flags: {
     [key: string]: boolean;
   };
+  isPhasor: boolean;
 
   constructor(
     instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>
@@ -26,6 +27,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     this.url = instanceSettings.jsonData.http.url || "";
     this.flags = instanceSettings.jsonData.flags || {};
+    this.isPhasor = instanceSettings.jsonData.phasor || false;
   }
 
   //List of all elements
@@ -33,7 +35,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return await getBackendSrv().datasourceRequest({
       url: this.url + "/search",
       method: "POST",
-      data: { target: "" },
+      data: { 
+        target: "",
+        isPhasor: this.isPhasor,
+      },
     });
   }
 
@@ -196,7 +201,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       format: "json",
       maxDataPoints: options.maxDataPoints ?? 0,
       targets: targets,
-      adhocFilters: [], // Check what this is 
+      adhocFilters: [], 
+      isPhasor: this.isPhasor,
     };
   }
 
