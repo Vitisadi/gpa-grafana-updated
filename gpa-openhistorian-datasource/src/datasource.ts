@@ -56,6 +56,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   async tableOptionsQuery() {
     return await getBackendSrv().datasourceRequest({
       url: this.url + "/gettableoptions",
+      data: { IsPhasor: this.isPhasor },
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -273,7 +274,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     //Add data & metadata fields 
     for (const entry of pointsData["data"]) {
-      frame.addField({ name: entry["target"], type: FieldType.number });
+      if(this.isPhasor){
+        const targetNames: string[] = entry["target"].split(";")
+        targetNames.map((targetName: string) => {
+          frame.addField({ name: targetName, type: FieldType.number });
+        })
+      }
+      else {
+        frame.addField({ name: entry["target"], type: FieldType.number });
+      }
 
       const meta = entry["meta"];
       for (const key in meta) {
@@ -284,8 +293,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     // Intermediate object to group points by timestamp
     let groupedPoints: {
       [timestamp: number]: { [target: string]: number };
-    } = groupPoints(pointsData);
+    } = groupPoints(pointsData, this.isPhasor);
 
+    console.log(groupedPoints)
     groupedPoints = addMetadata(groupedPoints, pointsData)
 
     // Iterate through grouped points and add them to the frame
@@ -324,20 +334,33 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 }
 
 //Groups data by time
-function groupPoints(pointsData: { [key: string]: any }) {
+function groupPoints(pointsData: { [key: string]: any }, isPhasor: boolean) {
   const groupedPoints: { [timestamp: number]: { [target: string]: number } } =
     {};
 
   //Iterate through each entry
   for (const entry of pointsData["data"]) {
     for (const points of entry["datapoints"]) {
-      const [val, timestamp] = points;
+      if(isPhasor){
+        const [mag, ang, timestamp] = points;
 
-      //Check if timestamp already exists in groupedPoints
-      if (timestamp in groupedPoints) {
-        groupedPoints[timestamp][entry["target"]] = val;
-      } else {
-        groupedPoints[timestamp] = { [entry["target"]]: val };
+        //Check if timestamp already exists in groupedPoints
+        if (timestamp in groupedPoints) {
+          groupedPoints[timestamp][entry["target"].split(";")[0]] = mag;
+          groupedPoints[timestamp][entry["target"].split(";")[1]] = ang;
+        } else {
+          groupedPoints[timestamp] = 
+            { [entry["target"].split(";")[0]]: mag, [entry["target"].split(";")[1]]: ang, };
+        }
+      }else {
+        const [val, timestamp] = points;
+
+        //Check if timestamp already exists in groupedPoints
+        if (timestamp in groupedPoints) {
+          groupedPoints[timestamp][entry["target"]] = val;
+        } else {
+          groupedPoints[timestamp] = { [entry["target"]]: val };
+        }
       }
     }
   }
