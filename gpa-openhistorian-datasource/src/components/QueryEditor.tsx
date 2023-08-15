@@ -30,34 +30,25 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
         Name: "",
         Parameters: []
       }      
-      query.elementsList = []
-      query.tablesList = []
+      
 
-      //Elements List
-      const searchRes = await datasource.searchQuery();
-      query.elementsList = searchRes.data || [];
-      query.elementsList.sort();
+      const interval = setInterval(() => {
+        if (!datasource.loading) {
+          setLoading(false);
+          onRunQuery();
+          onChange({ ...query });
+          clearInterval(interval); // Clear the interval once loading is done
+        }
+      }, 100);
 
-      //Metadata Tables
-      const tablesRes = await datasource.tableOptionsQuery();
-      query.tablesList = tablesRes.data || [];
+      const timeout = setTimeout(() => {
+        clearInterval(interval); // Clear the interval after 30 seconds, regardless of loading status
+      }, 30000);
 
-      //Metadata Options
-      const metadataRes = await datasource.metadataOptionsQuery(tablesRes.data);
-      query.metadataList = metadataRes.data || {}
-
-      //Define function list
-      const functionRes = await datasource.functionOptionsQuery()
-      query.functionList = {};
-
-      Object.entries(functionRes.data).forEach(([key, value]: [string, any]) => {
-        const name: string = value.Name;
-        query.functionList[name] = value;
-      }); 
-
-      onChange({ ...query });
-
-      setLoading(false);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
     };
     fetchData();
 
@@ -66,7 +57,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
   const generateFunctionData = (selectedFunctions: string[], functionIndex: number): FunctionData => {
     const functionName = selectedFunctions[functionIndex];
-    const functionInfo = query.functionList[functionName];
+    const functionInfo = datasource.functionList[functionName];
     let params: FunctionParameter[] = []
 
     functionInfo.Parameters.forEach((parameter) => {
@@ -177,12 +168,12 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
     let newValue = event.target.value;
     if(type === "int"){
       const parsedValue = parseInt(event.target.value, 10) 
-      newValue = isNaN(parsedValue) ? query.functionList[name].Parameters[0].Default : parsedValue.toString()
+      newValue = isNaN(parsedValue) ? datasource.functionList[name].Parameters[0].Default : parsedValue.toString()
     }
     else if(type === "double" || type === "float" || type === "decimal"){
       const lastCharacter = event.target.value.slice(-1);
       const parsedValue = parseFloat(event.target.value)  
-      newValue = isNaN(parsedValue) ? query.functionList[name].Parameters[0].Default : parsedValue.toString()
+      newValue = isNaN(parsedValue) ? datasource.functionList[name].Parameters[0].Default : parsedValue.toString()
       if (lastCharacter === ".") {
         newValue += "."
       }
@@ -219,7 +210,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   
 
   const loadElementsOptions = async (inputValue: string) => {
-    const asyncOptions = query.elementsList
+    const asyncOptions = datasource.elementsList
       .filter((element: string) => element.toLowerCase().includes(inputValue.toLowerCase()))
       .map((element: string) => ({
         label: element,
@@ -266,7 +257,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       options = AngleUnits;
     }
     else if (type === 'data') {
-      options = query.elementsList ?? [];
+      options = datasource.elementsList ?? [];
     }
 
     return options.map((option, index) => (
@@ -277,7 +268,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   }
 
   const renderFunctionSelector = () => {
-    const sortedFunctionOptions = Object.entries(query.functionList)
+    const sortedFunctionOptions = Object.entries(datasource.functionList)
       .map(([key, value]) => ({
         label: key,
         value: key,
@@ -320,13 +311,16 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   };
 
   const renderFunctionDisplay = (functionData: FunctionData, parameterPathIndex: number[]): JSX.Element => {
-    const sortedElementOptions = Object.entries(query.elementsList)
+    const sortedElementOptions: Array<{
+      label: string;
+      value: string;
+    }> = Object.entries(datasource.elementsList)
       .map(([key, value]) => ({
         label: value,
         value: value,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-
+    
     const functionName = functionData.Name;
     return (
       <>
@@ -419,8 +413,8 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   };
 
   const loadTableOptions = async (inputValue: string) => {
-    const tableOptions = query.tablesList
-    const metadataOptions = query.metadataList
+    const tableOptions = datasource.tablesList
+    const metadataOptions = datasource.metadataList
   
     const asyncOptions = tableOptions
       .map((table: string) => {
@@ -455,7 +449,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   return (
     <div className="gf-form" style={{ display: 'flex', flexDirection: 'column' }}>
       {loading ? ( // Render a loading indicator while loading is true
-        <div>Loading...</div>
+        <div>Loading... If persists refresh </div>
       ) : (
         <>
           <InlineField label="TYPE" labelWidth={12}>

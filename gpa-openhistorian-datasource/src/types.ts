@@ -10,32 +10,6 @@ export interface MyQuery extends DataQuery {
   };
   functions: string[];
   functionsData: FunctionData;
-
-  //Holders
-  elementsList: string[];
-  tablesList: string[];
-  metadataList: {
-    [tableName: string]: string[]
-  }
-
-  functionList: {
-    [name: string]: {
-      Description: string;
-      Name: string;
-      Parameters: {
-        Default: any;
-        Description: string;
-        ParameterType: string;
-        ParameterTypeName: string;
-        Required: boolean;
-      }[];
-      Regex: {
-        Pattern: string;
-        Options: number;
-      };
-      Type: string;
-    };
-  };
 }
 
 export const DEFAULT_QUERY: Partial<MyQuery> = {
@@ -44,10 +18,6 @@ export const DEFAULT_QUERY: Partial<MyQuery> = {
   queryText: "",
   metadataOptions: {},
   functions: [],
-
-  //Holders
-  elementsList: [],
-  tablesList: [],
 };
 
 // Config
@@ -65,6 +35,25 @@ export interface FunctionParameter {
   Value: string;
   Type: string;
   Sub?: FunctionData;
+}
+
+export interface IFunction{
+  [name: string]: {
+    Description: string;
+    Name: string;
+    Parameters: {
+      Default: any;
+      Description: string;
+      ParameterType: string;
+      ParameterTypeName: string;
+      Required: boolean;
+    }[];
+    Regex: {
+      Pattern: string;
+      Options: number;
+    };
+    Type: string;
+  };
 }
 
 export interface FunctionData {
@@ -96,7 +85,9 @@ export interface Target {
   refId: string;
   target: string;
   type: string;
-  metadataSelection: MyQuery["metadataList"];
+  metadataSelection: {
+    [tableName: string]: string[]
+  }
   excludedFlags: number;
   excludeNormalFlags: boolean;
 }

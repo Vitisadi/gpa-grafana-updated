@@ -7,7 +7,7 @@ import {
   FieldType,
 } from "@grafana/data";
 
-import { MyQuery, MyDataSourceOptions, MetadataTarget, QueryRequest, Target, FunctionData } from "./types";
+import { MyQuery, MyDataSourceOptions, MetadataTarget, QueryRequest, Target, FunctionData, IFunction } from "./types";
 import { getBackendSrv } from "@grafana/runtime";
 import _ from "lodash";
 import { DefaultFlags } from "./js/constants";
@@ -20,6 +20,16 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   };
   isPhasor: boolean;
 
+  loading = true;
+
+  // Holder variables
+  elementsList: string[] = [];
+  tablesList: string[] = [];
+  metadataList: {
+    [tableName: string]: string[]
+  } = {}
+  functionList: IFunction = {}
+
   constructor(
     instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>
   ) {
@@ -28,6 +38,37 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     this.url = instanceSettings.jsonData.http.url || "";
     this.flags = instanceSettings.jsonData.flags || {};
     this.isPhasor = instanceSettings.jsonData.phasor || false;
+
+    Promise.all([
+      this.searchQuery(),
+      this.tableOptionsQuery()
+        .then(tablesRes => {
+          this.tablesList = tablesRes.data || [];
+          return this.metadataOptionsQuery(this.tablesList);
+        }),
+      this.functionOptionsQuery(),
+    ])
+    .then(([searchRes, metadataRes, functionRes]) => {  
+      // Elements List
+      this.elementsList = searchRes.data || [];
+      this.elementsList.sort();
+  
+      // Metadata List
+      this.metadataList = metadataRes.data || {};
+  
+      // Function List
+      Object.entries(functionRes.data).forEach(([key, value]: [string, any]) => {
+        const name: string = value.Name;
+        this.functionList[name] = value;
+      });
+  
+      // All promises are resolved, set loading to false
+      this.loading = false;
+    })
+    .catch(error => {
+      console.error("An error occurred in fetching data:", error);
+      this.loading = false;
+    });
   }
 
   //List of all elements
@@ -176,9 +217,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
   
 
-
-
-
   buildQueryParameters(options: DataQueryRequest<MyQuery>): QueryRequest {
     const excludedFlags = this.calculateFlags();
     const excludeNormalFlags = this.flags["Normal"] ?? false;
@@ -295,7 +333,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       [timestamp: number]: { [target: string]: number };
     } = groupPoints(pointsData, this.isPhasor);
 
-    console.log(groupedPoints)
     groupedPoints = addMetadata(groupedPoints, pointsData)
 
     // Iterate through grouped points and add them to the frame
