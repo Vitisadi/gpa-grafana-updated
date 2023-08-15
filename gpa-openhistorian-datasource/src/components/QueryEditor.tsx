@@ -10,7 +10,8 @@ type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 
 export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
-  const [loading, setLoading] = useState(true);
+  const [datasourceLoading, setDatasourceLoading] = useState(datasource.loading);
+  const [queryLoading, setQueryLoading] = useState(datasource.loading);
   const [typeValue, setTypeValue] = useState<SelectableValue<string>>(
     query.queryType ? { label: query.queryType, value: query.queryType } : SelectOptions[0]
   );
@@ -29,17 +30,18 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       query.functionsData = {
         Name: "",
         Parameters: []
-      }      
+      }    
+      setQueryLoading(false);  
       
-
+      // Check loading status every 25 ms. Times out at 30 seconds
       const interval = setInterval(() => {
         if (!datasource.loading) {
-          setLoading(false);
+          setDatasourceLoading(false);
           onRunQuery();
           onChange({ ...query });
           clearInterval(interval); // Clear the interval once loading is done
         }
-      }, 100);
+      }, 25);
 
       const timeout = setTimeout(() => {
         clearInterval(interval); // Clear the interval after 30 seconds, regardless of loading status
@@ -448,15 +450,15 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
 
   return (
     <div className="gf-form" style={{ display: 'flex', flexDirection: 'column' }}>
-      {loading ? ( // Render a loading indicator while loading is true
-        <div>Loading... If persists refresh </div>
+      {(datasourceLoading || queryLoading) ? ( // Render a loading indicator while loading is true
+        <h3>Loading...</h3> 
       ) : (
         <>
           <InlineField label="TYPE" labelWidth={12}>
             <Select options={SelectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
           </InlineField>
           {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements() }
-          {(query.queryType === 'Functions' || query.queryType === undefined) && renderFunctions() }
+          {(query.queryType === 'Functions') && renderFunctions() }
           {query.queryType === 'Text Editor' && renderTextBox()}
   
           <InlineField label="Metadata" labelWidth={12}>
