@@ -3,7 +3,7 @@ import { InlineFieldRow, InlineField, Select, AsyncMultiSelect, TextArea, MultiS
 import { SelectableValue, QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery, FunctionParameter, FunctionData } from '../types';
-import { SelectOptions, Booleans, AngleUnits, TimeUnits } from '../js/constants'
+import { SelectOptions, Booleans, AngleUnits, TimeUnits, DefaultTimeUnits } from '../js/constants'
 import "../css/query-editor.css";
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
@@ -68,6 +68,14 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           Value: "",
           Type: parameter.ParameterTypeName,
           Sub: generateFunctionData(selectedFunctions, (functionIndex + 1))
+        })
+      }
+      else if(parameter.ParameterTypeName === "time"){
+        console.log(DefaultTimeUnits[parameter.Default.Unit])
+        params.push({
+          Value: DefaultTimeUnits[parameter.Default.Unit], 
+          Type: parameter.ParameterTypeName,
+          Sub: undefined,
         })
       }
       else{
@@ -251,7 +259,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
   const renderFunctionDropdownOptions = (type: string) => {
     // Determine options array based on type
     let options: string[] = [];
-    if (type === 'boolean') {
+    if (type === 'boolean' || type === 'bool') {
       options = Booleans;
     } else if (type === 'time') {
       options = TimeUnits;
@@ -334,6 +342,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           const newParameterPathIndex = [...parameterPathIndex, paramIndex];
           // No sub functions
           if (param.Sub === undefined) {
+            console.log(param)
             return (
               <React.Fragment key={paramIndex}>
                 {/* Typing Box */}
@@ -354,7 +363,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                 ) : null}
   
                 {/* Dropdown */}
-                {type === 'boolean' || type === 'time' || type === 'angleUnits' ? (
+                {type === 'boolean' || type === 'bool' || type === 'time' || type === 'angleUnits' ? (
                   <select
                     value={param.Value}
                     onChange={(event) => {
