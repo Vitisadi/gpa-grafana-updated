@@ -86,7 +86,7 @@ export const WhereOperators = ['=', '<>', '<', '<=', '>', '>=', 'LIKE', 'NOT LIK
 
 export const Booleans = ['true', 'false'];
 
-export const AngleUnits = ['Degrees', 'Radians', 'Grads', 'ArcMinutes', 'ArcSeconds', 'AngularMil']
+export const AngleUnits = ['Radians', 'Degrees', 'Grads', 'ArcMinutes', 'ArcSeconds', 'AngularMil']
 
 export const TimeUnits = ['Weeks', 'Days', 'Hours', 'Minutes', 'Seconds', 'Milliseconds', 'Microseconds', 'Nanoseconds', 'Ticks', 'PlankTime', 'AtomicUnitsOfTime', 'Ke']
 

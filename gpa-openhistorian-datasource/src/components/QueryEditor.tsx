@@ -71,9 +71,15 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
         })
       }
       else if(parameter.ParameterTypeName === "time"){
-        console.log(DefaultTimeUnits[parameter.Default.Unit])
         params.push({
           Value: DefaultTimeUnits[parameter.Default.Unit], 
+          Type: parameter.ParameterTypeName,
+          Sub: undefined,
+        })
+      }
+      else if (parameter.ParameterTypeName === "angle"){
+        params.push({
+          Value: AngleUnits[parameter.Default], 
           Type: parameter.ParameterTypeName,
           Sub: undefined,
         })
@@ -263,12 +269,13 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       options = Booleans;
     } else if (type === 'time') {
       options = TimeUnits;
-    } else if (type === 'angleUnits') {
+    } else if (type === 'angle') {
       options = AngleUnits;
     }
     else if (type === 'data') {
       options = datasource.elementsList ?? [];
     }
+
 
     return options.map((option, index) => (
       <option key={index} value={option}>
@@ -342,7 +349,6 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           const newParameterPathIndex = [...parameterPathIndex, paramIndex];
           // No sub functions
           if (param.Sub === undefined) {
-            console.log(param)
             return (
               <React.Fragment key={paramIndex}>
                 {/* Typing Box */}
@@ -362,8 +368,9 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                   />
                 ) : null}
   
+                
                 {/* Dropdown */}
-                {type === 'boolean' || type === 'bool' || type === 'time' || type === 'angleUnits' ? (
+                {type === 'boolean' || type === 'bool' || type === 'time' || type === 'angle' ? (
                   <select
                     value={param.Value}
                     onChange={(event) => {
