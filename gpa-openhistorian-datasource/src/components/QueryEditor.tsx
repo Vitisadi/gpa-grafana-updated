@@ -12,10 +12,6 @@ type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
   const [datasourceLoading, setDatasourceLoading] = useState(datasource.loading);
   const [queryLoading, setQueryLoading] = useState(datasource.loading);
-  const [typeValue, setTypeValue] = useState<SelectableValue<string>>(
-    query.queryType ? { label: query.queryType, value: query.queryType } : SelectOptions[0]
-  );
-  // const [functionValue, setFunctionValue] = useState<Array<SelectableValue<string>>>([]);
   const [tableOptions, setTableOptions] = useState<Array<SelectableValue<string>>>();
 
   //Only runs on page loading - prevents repetitive api calls
@@ -128,7 +124,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       query.elements = [];
     }
 
-    setTypeValue(selected);
+    query.queryType = selected.value as string
     if (selected) {
       onChange({ ...query, queryType: selected.value! });
     }
@@ -317,9 +313,6 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       <div>
         <InlineFieldRow>
           {renderFunctionSelector()}
-          <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
-            {query.functionsData.Name !== "" && renderFunctionDisplay(query.functionsData, [])} 
-          </div>
         </InlineFieldRow>
       </div>
     );
@@ -356,14 +349,13 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
                   <input
                     type="text"
                     value={param.Value}
-                    style={{ width: `${param.Value.length * 8.5}px` }}
+                    style={{ width: `${param.Value.toString().length * 8 + 25}px` }}
                     onChange={(event) => {
                       const newValue = validateTextBoxChange(event, functionName, type, paramIndex);
                       updateFunctionData(newValue, newParameterPathIndex);
-                    }}
-                    onInput={(event) => {
+
                       const target = event.target as HTMLInputElement;
-                      target.style.width = `${target.value.length * 8.5}px`;
+                      target.style.width = `${param.Value.toString().length * 8 + 25}px`;
                     }}
                   />
                 ) : null}
@@ -471,7 +463,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
       ) : (
         <>
           <InlineField label="TYPE" labelWidth={12}>
-            <Select options={SelectOptions} value={typeValue} onChange={onSearchChange} allowCustomValue />
+            <Select options={SelectOptions} value={query.queryType} onChange={onSearchChange} allowCustomValue />
           </InlineField>
           {(query.queryType === 'Element List' || query.queryType === undefined) && renderElements() }
           {(query.queryType === 'Functions') && renderFunctions() }
@@ -488,6 +480,14 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
               />
             </div>
           </InlineField>
+
+          {
+            (query.functions.length !== 0 && query.functionsData.Name !== "")
+              ? <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
+                  {renderFunctionDisplay(query.functionsData, [])}
+                </div>
+              : null
+          }
         </>
       )}
     </div>
