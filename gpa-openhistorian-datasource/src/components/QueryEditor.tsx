@@ -482,7 +482,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           </InlineField>
 
           {
-            (query.functions.length !== 0 && query.functionsData.Name !== "")
+            (query.functions !== undefined && query.functions.length !== 0 && query.functionsData.Name !== "")
               ? <div className="dark-box" style={{ display: 'flex', alignItems: 'center' }}>
                   {renderFunctionDisplay(query.functionsData, [])}
                 </div>
